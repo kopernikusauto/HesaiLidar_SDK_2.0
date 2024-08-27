@@ -91,7 +91,7 @@ Lidar<T_Point>::~Lidar() {
     delete[] mutex_list_;
     mutex_list_ = nullptr;
   }
-  Logger::GetInstance().Stop();
+  // Logger::GetInstance().Stop();
 }
 
 template <typename T_Point>
@@ -103,11 +103,11 @@ template <typename T_Point>
 int Lidar<T_Point>::Init(const DriverParam& param) {
   int res = -1;
     /*******************************Init log*********************************************/
-    Logger::GetInstance().SetFileName(param.log_path.c_str());
-    Logger::GetInstance().setLogTargetRule(param.log_Target);
-    Logger::GetInstance().setLogLevelRule(param.log_level);
+    // Logger::GetInstance().SetFileName(param.log_path.c_str());
+    // Logger::GetInstance().setLogTargetRule(param.log_Target);
+    // Logger::GetInstance().setLogLevelRule(param.log_level);
     // Logger::GetInstance().bindLogCallback(logCallback);
-    Logger::GetInstance().Start(); 
+    // Logger::GetInstance().Start(); 
     /**********************************************************************************/
 
     /***************************Init source****************************************/

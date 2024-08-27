@@ -62,7 +62,7 @@ target_link_libraries(sample
   container_lib
   ptcClient_lib
   ptcParser_lib
-  log_lib
+  # log_lib
   ${OPENSSL_LIBRARIES}
 )
 
@@ -89,7 +89,7 @@ if(${CUDA_FOUND})
   source_lib
   container_lib
   ptcClient_lib
-  log_lib
+  # log_lib
   ptcParser_lib
   ${OPENSSL_LIBRARIES}
 )
