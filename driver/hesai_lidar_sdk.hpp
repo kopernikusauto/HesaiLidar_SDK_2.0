@@ -92,13 +92,13 @@ public:
   }
   // start process thread
   void Start() {
+    is_thread_runing_ = true;
     runing_thread_ptr_ = new std::thread(std::bind(&HesaiLidarSdk::Run, this));  
   }
 
   // process thread
   void Run()
   {
-    is_thread_runing_ = true;
     UdpFrame_t udp_packet_frame;
     LidarDecodedPacket<T_Point> decoded_packet;
     decoded_packet.use_timestamp_type = lidar_ptr_->use_timestamp_type_;
