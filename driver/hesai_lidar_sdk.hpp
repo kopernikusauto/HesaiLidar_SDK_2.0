@@ -141,9 +141,6 @@ public:
           //publish point cloud topic
           if(point_cloud_cb_) point_cloud_cb_(lidar_ptr_->frame_);
 
-          //publish upd packet topic
-          if(pkt_cb_) pkt_cb_(udp_packet_frame, lidar_ptr_->frame_.points[0].timestamp);
-
           if (pkt_loss_cb_ )
           {
             total_packet_count = lidar_ptr_->udp_parser_->GetGeneralParser()->total_packet_count_;
