@@ -40,7 +40,6 @@ SocketSource::SocketSource(uint16_t port, std::string multicastIp) {
   udp_port_ = port;
   udp_sock_ = -1;
   multicast_ip_ = multicastIp;
-  is_select_ = false;
 }
 
 SocketSource::~SocketSource() { Close(); }
@@ -210,29 +209,20 @@ int SocketSource::Receive(UdpPacket& udpPacket, uint16_t u16Len, int flags,
     timeout.tv_sec = 0;
     timeout.tv_usec = iTimeout;
     FD_ZERO(&rfd);
-
     FD_SET(udp_sock_, &rfd);
-    if (!is_select_) {
+
+    int cnt = select(udp_sock_ + 1, &rfd, NULL, NULL, &timeout);
+    if (cnt > 0) {
       sockaddr_in clientAddr;
       socklen_t addrLen = sizeof(sockaddr);
       len = recvfrom(udp_sock_, (char*)udpPacket.buffer, u16Len, flags,
-                    (sockaddr*)&clientAddr, &addrLen);
-      if(len == -1) {is_select_ = true;}
+                   (sockaddr*)&clientAddr, &addrLen);
+    } else if (cnt == 0) {
+      len = 0;
+      udpPacket.is_timeout = true;
     } else {
-      int cnt = select(udp_sock_ + 1, &rfd, NULL, NULL, &timeout);
-      if (cnt > 0) {
-        is_select_ = false;
-        sockaddr_in clientAddr;
-        socklen_t addrLen = sizeof(sockaddr);
-        len = recvfrom(udp_sock_, (char*)udpPacket.buffer, u16Len, flags,
-                     (sockaddr*)&clientAddr, &addrLen);        
-      } else if (cnt == 0) {
-        len = 0;
-        udpPacket.is_timeout = true;        
-      } else {
-        std::cout << "Select timeout error" << std::endl;
-      }
-    } 
+      std::cout << "Select timeout error" << std::endl;
+    }
   }
 
   return len;

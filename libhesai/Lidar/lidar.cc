@@ -496,7 +496,7 @@ void Lidar<T_Point>::RecieveUdpThread()
       continue;
     }
     UdpPacket udp_packet;
-    int len = source_->Receive(udp_packet, kBufSize);
+    int len = source_->Receive(udp_packet, kBufSize, 0, 1000000);
     if (len == -1)
     {
       std::this_thread::sleep_for(std::chrono::microseconds(1000));
@@ -512,8 +512,10 @@ void Lidar<T_Point>::RecieveUdpThread()
     case 0:
       if (is_timeout_ == false)
       {
-        udp_packet.packet_len = AT128E2X_PACKET_LEN;
-        origin_packets_buffer_.emplace_back(udp_packet);
+        // the following code makes no sense: we'd rather ignore the timed out packets!
+        //
+        // udp_packet.packet_len = AT128E2X_PACKET_LEN;
+        // origin_packets_buffer_.emplace_back(udp_packet);
         is_timeout_ = true;
       }
       break;
