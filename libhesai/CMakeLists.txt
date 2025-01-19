@@ -35,6 +35,9 @@ file(GLOB_RECURSE _udpparser_headers
     UdpParser/include/*.h
     UdpParser/src/*.cc
 )
+file(GLOB_RECURSE _lidar_headers
+    Lidar/*.h
+)
 
 add_library(HesaiPtcParser
     PtcParser/src/general_ptc_parser.cc
@@ -119,6 +122,12 @@ install(
     include/plat_utils.h
     DESTINATION
     include
+)
+
+install(
+    FILES
+    ${_lidar_headers}
+    DESTINATION include/Lidar
 )
 
 install(
