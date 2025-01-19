@@ -16,6 +16,6 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////////
 
-#define VERSION_MAJOR @HESAI_VERSION_MAJOR@
-#define VERSION_MINOR @HESAI_VERSION_MINOR@
-#define VERSION_TINY  @HESAI_VERSION_TINY@
+#define HESAI_VERSION_MAJOR @HESAI_VERSION_MAJOR@
+#define HESAI_VERSION_MINOR @HESAI_VERSION_MINOR@
+#define HESAI_VERSION_TINY  @HESAI_VERSION_TINY@

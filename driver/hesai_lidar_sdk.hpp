@@ -3,26 +3,26 @@ Copyright (C) 2023 Hesai Technology Co., Ltd.
 Copyright (C) 2023 Original Authors
 All rights reserved.
 
-All code in this repository is released under the terms of the following Modified BSD License. 
-Redistribution and use in source and binary forms, with or without modification, are permitted 
+All code in this repository is released under the terms of the following Modified BSD License.
+Redistribution and use in source and binary forms, with or without modification, are permitted
 provided that the following conditions are met:
 
-* Redistributions of source code must retain the above copyright notice, this list of conditions and 
+* Redistributions of source code must retain the above copyright notice, this list of conditions and
   the following disclaimer.
 
-* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and 
+* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
   the following disclaimer in the documentation and/or other materials provided with the distribution.
 
-* Neither the name of the copyright holder nor the names of its contributors may be used to endorse or 
+* Neither the name of the copyright holder nor the names of its contributors may be used to endorse or
   promote products derived from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
-TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 #pragma once
@@ -34,7 +34,7 @@ namespace hesai
 namespace lidar
 {
 template <typename T_Point>
-class HesaiLidarSdk 
+class HesaiLidarSdk
 {
 private:
   std::thread *runing_thread_ptr_;
@@ -47,7 +47,7 @@ private:
   bool packet_loss_tool_;
 public:
   HesaiLidarSdk() {
-    std::cout << "-------- Hesai Lidar SDK V" << VERSION_MAJOR << "." << VERSION_MINOR << "." << VERSION_TINY << " --------" << std::endl;
+    std::cout << "-------- Hesai Lidar SDK V" << HESAI_VERSION_MAJOR << "." << HESAI_VERSION_MINOR << "." << HESAI_VERSION_TINY << " --------" << std::endl;
     runing_thread_ptr_ = nullptr;
     lidar_ptr_ = nullptr;
     is_thread_runing_ = false;
@@ -60,9 +60,9 @@ public:
   Lidar<T_Point> *lidar_ptr_;
 
   //init lidar with param. init logger, udp parser, source, ptc client, start receive/parser thread
-  bool Init(const DriverParam& param) 
+  bool Init(const DriverParam& param)
   {
-   /*****************************Init decoder******************************************************/ 
+   /*****************************Init decoder******************************************************/
     lidar_ptr_ = new Lidar<T_Point>;
     if (nullptr == lidar_ptr_) {
       std::cout << "create Lidar fail" << std::endl;
@@ -72,7 +72,7 @@ public:
     lidar_ptr_->Init(param);
     //set packet_loss_tool
     packet_loss_tool_ = param.decoder_param.enable_packet_loss_tool;
-    /***********************************************************************************/ 
+    /***********************************************************************************/
     return true;
   }
 
@@ -88,12 +88,12 @@ public:
     if (nullptr != lidar_ptr_) {
       delete lidar_ptr_;
       lidar_ptr_ = nullptr;
-    }  
+    }
   }
   // start process thread
   void Start() {
     is_thread_runing_ = true;
-    runing_thread_ptr_ = new std::thread(std::bind(&HesaiLidarSdk::Run, this));  
+    runing_thread_ptr_ = new std::thread(std::bind(&HesaiLidarSdk::Run, this));
   }
 
   // process thread
@@ -198,7 +198,7 @@ public:
         }
       }
     }
-  } 
+  }
   // assign callback fuction
   void RegRecvCallback(const std::function<void(const LidarDecodedFrame<T_Point>&)>& callback) {
     point_cloud_cb_ = callback;
@@ -222,7 +222,7 @@ public:
   }
   //parsar fault message
   void FaultMessageCallback(UdpPacket& udp_packet, FaultMessageInfo& fault_message_info) {
-     FaultMessageVersion3 *fault_message_ptr = 
+     FaultMessageVersion3 *fault_message_ptr =
       reinterpret_cast< FaultMessageVersion3*> (&(udp_packet.buffer[0]));
     fault_message_ptr->ParserFaultMessage(fault_message_info);
     return;

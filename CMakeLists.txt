@@ -28,7 +28,6 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/Version.h"
 )
-include_directories("${PROJECT_BINARY_DIR}")
 
 find_package(OpenSSL REQUIRED)
 find_package(Threads)
@@ -36,10 +35,14 @@ find_package(Threads)
 add_library(HesaiDriverInterface INTERFACE driver/hesai_lidar_sdk.hpp)
 target_include_directories(HesaiDriverInterface INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/driver>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 install(TARGETS HesaiDriverInterface)
-install(FILES driver/hesai_lidar_sdk.hpp DESTINATION include)
+install(FILES
+    driver/hesai_lidar_sdk.hpp
+    ${CMAKE_CURRENT_BINARY_DIR}/Version.h
+    DESTINATION include)
 
 add_subdirectory(libhesai)
 
