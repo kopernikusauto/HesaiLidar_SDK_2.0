@@ -49,6 +49,7 @@ file(GLOB_RECURSE _udpparser_headers
 )
 file(GLOB_RECURSE _lidar_headers
     Lidar/*.h
+    Lidar/*.cc
 )
 
 add_library(HesaiPtcParser
