@@ -26,7 +26,7 @@
  * Author:     Zhang Xu <int_zhangxu@hesaitech.com>
  * Description: ptc parser class is an interface layer.
  */
-#include "../include/ptc_parser.h"
+#include "ptc_parser.h"
 
 using namespace hesai::lidar;
 

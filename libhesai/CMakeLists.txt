@@ -2,6 +2,18 @@
 # Hesai Tech <http://www.hesaitech.com>  #
 # ----------------------------------------#
 
+add_library(HesaiLogging
+    Logger/src/logger.cc)
+target_include_directories(HesaiLogging PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Logger/include>
+    $<INSTALL_INTERFACE:include/Logger>
+)
+target_link_libraries(HesaiLogging PUBLIC Threads::Threads)
+set_target_properties(HesaiLogging PROPERTIES CXX_STANDARD_REQUIRED TRUE CXX_STANDARD 17)
+file(GLOB_RECURSE _logger_headers
+    Logger/include/*.h
+)
+
 add_library(HesaiLidar
     src/plat_utils.cc
     src/auto_tick_count.cc
@@ -49,7 +61,7 @@ target_include_directories(HesaiPtcParser PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/PtcParser/include>
     $<INSTALL_INTERFACE:include/PtcParser>
 )
-target_link_libraries(HesaiPtcParser PUBLIC HesaiLidar HesaiPtcClient)
+target_link_libraries(HesaiPtcParser PUBLIC HesaiLidar HesaiLogging HesaiPtcClient)
 set_target_properties(HesaiPtcParser PROPERTIES CXX_STANDARD_REQUIRED TRUE CXX_STANDARD 17)
 file(GLOB_RECURSE _ptc_parser_headers
     PtcParser/include/*.h
@@ -87,18 +99,6 @@ target_include_directories(HesaiSource PUBLIC
 set_target_properties(HesaiSource PROPERTIES CXX_STANDARD_REQUIRED TRUE CXX_STANDARD 17)
 file(GLOB_RECURSE _hesai_source_headers
     Source/include/*.h
-)
-
-add_library(HesaiLogging
-    Logger/src/logger.cc)
-target_include_directories(HesaiLogging PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Logger/include>
-    $<INSTALL_INTERFACE:include/Logger>
-)
-target_link_libraries(HesaiLogging PUBLIC Threads::Threads)
-set_target_properties(HesaiLogging PROPERTIES CXX_STANDARD_REQUIRED TRUE CXX_STANDARD 17)
-file(GLOB_RECURSE _logger_headers
-    Logger/include/*.h
 )
 
 ###########################################

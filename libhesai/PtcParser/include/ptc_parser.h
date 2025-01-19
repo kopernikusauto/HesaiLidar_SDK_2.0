@@ -28,7 +28,7 @@
  */
 #ifndef PTC_PARSER_H_
 #define PTC_PARSER_H_
-#include "../../Lidar/lidar_types.h"
+#include "lidar_types.h"
 #include "general_ptc_parser.h"
 #include "ptc_1_0_parser.h"
 #include "ptc_2_0_parser.h"

@@ -28,8 +28,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UDP_PARSER_H_
 #define UDP_PARSER_H_
 
-#include "../../Lidar/lidar_types.h"
-#include "../../Source/include/pcap_saver.h"
+#include "lidar_types.h"
+#include "pcap_saver.h"
 #include "general_parser.h"
 #include "udp1_4_parser.h"
 #include "udp2_4_parser.h"

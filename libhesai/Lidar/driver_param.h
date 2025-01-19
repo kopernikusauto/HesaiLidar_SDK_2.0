@@ -27,7 +27,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
 #pragma once
-#include "../Logger/include/logger.h"
+#include "logger.h"
 #include <string>
 namespace hesai
 {
