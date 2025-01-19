@@ -23,13 +23,6 @@ endif()
 
 option(HESAI_BUILD_SAMPLES "Build the included sample applications" OFF)
 option(HESAI_ENABLE_CUDA "Enable Cuda targets" OFF)
-option(HESAI_WITH_LIDARBOARD "Build lidarboard code" ON)
-option(HESAI_WITH_PLATUTIL "Build platform utils code" ON)
-option(HESAI_WITH_UDPPARSER "Build udp parser code" ON)
-option(HESAI_WITH_PTCCLIENT "Build ptc client code" ON)
-option(HESAI_WITH_PTCPARSER "Build ptc parser code" ON)
-option(HESAI_WITH_CONTAINER "Build container code" ON)
-option(HESAI_WITH_LOG "Build log code" ON)
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/Version.h.in"
@@ -38,9 +31,15 @@ configure_file(
 include_directories("${PROJECT_BINARY_DIR}")
 
 find_package(OpenSSL REQUIRED)
+find_package(Threads)
 
-add_library(hesai_driver_interface INTERFACE)
-target_include_directories(hesai_driver_interface INTERFACE driver)
+add_library(HesaiDriverInterface INTERFACE driver/hesai_lidar_sdk.hpp)
+target_include_directories(HesaiDriverInterface INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/driver>
+    $<INSTALL_INTERFACE:include>
+)
+install(TARGETS HesaiDriverInterface)
+install(FILES driver/hesai_lidar_sdk.hpp DESTINATION include)
 
 add_subdirectory(libhesai)
 
@@ -51,12 +50,11 @@ if (HESAI_BUILD_SAMPLES)
     )
 
     target_link_libraries(sample
-        hesai_driver_interface
-        lidar_lib
-        source_lib
-        ptcClient_lib
-        ptcParser_lib
-        # log_lib
+        HesaiDriverInterface
+        HesaiLidar
+        HesaiSource
+        HesaiPtcClient
+        HesaiPtcParser
         OpenSSL::SSL
         OpenSSL::Crypto
     )
@@ -84,10 +82,10 @@ if (HESAI_BUILD_SAMPLES)
             ./libhesai/UdpParserGpu/src/buffer.cu)
 
         target_link_libraries(sample_gpu
-            source_lib
-            container_lib
-            ptcClient_lib
-            ptcParser_lib
+            HesaiLidar
+            HesaiSource
+            HesaiPtcCLient
+            HesaiPtcParser
             OpenSSL::SSL
             OpenSSL::Crypto)
     endif(HESAI_ENABLE_CUDA)
