@@ -3,26 +3,26 @@ Copyright (C) 2023 Hesai Technology Co., Ltd.
 Copyright (C) 2023 Original Authors
 All rights reserved.
 
-All code in this repository is released under the terms of the following Modified BSD License. 
-Redistribution and use in source and binary forms, with or without modification, are permitted 
+All code in this repository is released under the terms of the following Modified BSD License.
+Redistribution and use in source and binary forms, with or without modification, are permitted
 provided that the following conditions are met:
 
-* Redistributions of source code must retain the above copyright notice, this list of conditions and 
+* Redistributions of source code must retain the above copyright notice, this list of conditions and
   the following disclaimer.
 
-* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and 
+* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
   the following disclaimer in the documentation and/or other materials provided with the distribution.
 
-* Neither the name of the copyright holder nor the names of its contributors may be used to endorse or 
+* Neither the name of the copyright holder nor the names of its contributors may be used to endorse or
   promote products derived from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
-TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
@@ -50,7 +50,7 @@ int Udp3_2Parser<T_Point>::LoadFiretimesString(char *firetimes_string) {
   std::istringstream fin(firetimes_content_str);
   std::string line;
   // first line sequence,chn id,firetime/us
-  if (std::getline(fin, line)) {  
+  if (std::getline(fin, line)) {
     printf("Parse Lidar firetime now...\n");
   }
   std::vector<std::string> firstLine;
@@ -276,7 +276,7 @@ void Udp3_2Parser<T_Point>::GetDistanceCorrection(double &azi, double &ele,
            (point_y - HS_LIDAR_QT128_COORDINATE_CORRECTION_ODOG) *
                this->cos_all_angle_[eleIndex] * this->cos_all_angle_[aziIndex] +
            point_z * this->sin_all_angle_[eleIndex]) <= 0) {
-         
+
         point_x = -sqrt(distance * distance -
                         HS_LIDAR_QT128_COORDINATE_CORRECTION_ODOG *
                             HS_LIDAR_QT128_COORDINATE_CORRECTION_ODOG);
@@ -301,7 +301,7 @@ int Udp3_2Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, LidarD
 
     for (int i = 0; i < packet.laser_num; i++) {
       int point_index = packet.packet_index * packet.points_num + blockid * packet.laser_num + i;
-      float distance = packet.distances[blockid * packet.laser_num + i] * packet.distance_unit;   
+      float distance = packet.distances[blockid * packet.laser_num + i] * packet.distance_unit;
       if (this->get_correction_file_) {
         elevation = packet.elevation[blockid * packet.laser_num + i];
         elevation = (CIRCLE + elevation) % CIRCLE;
@@ -314,7 +314,7 @@ int Udp3_2Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, LidarD
         if (fov_transfer < packet.config.fov_start || fov_transfer > packet.config.fov_end){//不在fov范围continue
           continue;
         }
-      }             
+      }
       float xyDistance = distance * this->cos_all_angle_[(elevation)];
       float x = xyDistance * this->sin_all_angle_[(azimuth)];
       float y = xyDistance * this->cos_all_angle_[(azimuth)];
@@ -347,15 +347,15 @@ int Udp3_2Parser<T_Point>::DecodePacket(LidarDecodedPacket<T_Point> &output, con
   // float minAzimuth = 0;
   // float maxAzimuth = 0;
   output.block_num = pHeader->GetBlockNum();
-  output.laser_num = pHeader->GetLaserNum();  
-  output.distance_unit = pHeader->GetDistUnit();      
+  output.laser_num = pHeader->GetLaserNum();
+  output.distance_unit = pHeader->GetDistUnit();
 
   // point to azimuth of udp start block
   if (pHeader->HasConfidenceLevel()) {
     const HS_LIDAR_BODY_AZIMUTH_QT_V2 *pAzimuth =
         reinterpret_cast<const HS_LIDAR_BODY_AZIMUTH_QT_V2 *>(
             (const unsigned char *)pHeader + sizeof(HS_LIDAR_HEADER_QT_V2));
-    
+
     const HS_LIDAR_BODY_CHN_UNIT_QT_V2 *pChnUnit =
         reinterpret_cast<const HS_LIDAR_BODY_CHN_UNIT_QT_V2 *>(
             (const unsigned char *)pAzimuth +
@@ -388,13 +388,13 @@ int Udp3_2Parser<T_Point>::DecodePacket(LidarDecodedPacket<T_Point> &output, con
         }
         pTailSeqNum->CalPktLoss(this->start_seqnum_, this->last_seqnum_, this->loss_count_, this->start_time_, this->total_loss_count_, this->total_start_seqnum_);
       }
-    }                                      
+    }
     if (output.use_timestamp_type == 0) {
       output.sensor_timestamp = pTail->GetMicroLidarTimeU64();
     } else {
       output.sensor_timestamp = udpPacket.recv_timestamp;
-    }    
-    output.host_timestamp = GetMicroTickCountU64();   
+    }
+    output.host_timestamp = GetMicroTickCountU64();
     // if(this->enable_packet_loss_tool_ == true) return 0;
 
     this->spin_speed_ = pTail->m_u16MotorSpeed;
@@ -442,19 +442,19 @@ int Udp3_2Parser<T_Point>::DecodePacket(LidarDecodedPacket<T_Point> &output, con
         output.reflectivities[index] = pChnUnit->GetReflectivity();
         output.azimuth[index] = azimuthCorr * 100;
         output.elevation[index] = elevationCorr * 100;
-        pChnUnit = pChnUnit + 1;  
-        index++;  
+        pChnUnit = pChnUnit + 1;
+        index++;
       }
     }
     if (IsNeedFrameSplit(u16Azimuth)) {
       output.scan_complete = true;
     }
     this->last_last_azimuth_ = this->last_azimuth_;
-    this->last_azimuth_ = u16Azimuth;  
+    this->last_azimuth_ = u16Azimuth;
   } else {
     const HS_LIDAR_BODY_AZIMUTH_QT_V2 *pAzimuth =
         reinterpret_cast<const HS_LIDAR_BODY_AZIMUTH_QT_V2 *>(
-            (const unsigned char *)pHeader + sizeof(HS_LIDAR_HEADER_QT_V2));       
+            (const unsigned char *)pHeader + sizeof(HS_LIDAR_HEADER_QT_V2));
 
     const HS_LIDAR_BODY_CHN_UNIT_NO_CONF_QT_V2 *pChnUnit =
         reinterpret_cast<const HS_LIDAR_BODY_CHN_UNIT_NO_CONF_QT_V2 *>(
@@ -484,7 +484,7 @@ int Udp3_2Parser<T_Point>::DecodePacket(LidarDecodedPacket<T_Point> &output, con
       pChnUnit = reinterpret_cast<const HS_LIDAR_BODY_CHN_UNIT_NO_CONF_QT_V2 *>(
           (const unsigned char *)pAzimuth +
           sizeof(HS_LIDAR_BODY_AZIMUTH_QT_V2));
-      u16Azimuth = pAzimuth->GetAzimuth(); 
+      u16Azimuth = pAzimuth->GetAzimuth();
       // point to next block azimuth addr
       pAzimuth = reinterpret_cast<const HS_LIDAR_BODY_AZIMUTH_QT_V2 *>(
           (const unsigned char *)pAzimuth +
@@ -515,10 +515,10 @@ int Udp3_2Parser<T_Point>::DecodePacket(LidarDecodedPacket<T_Point> &output, con
                 laserId, pTail->GetMotorSpeed(), loopIndex);
           }
         output.distances[index] = pChnUnit->GetDistance();
-        output.reflectivities[index] = pChnUnit->GetReflectivity(); 
+        output.reflectivities[index] = pChnUnit->GetReflectivity();
         output.azimuth[index] = azimuthCorr * kResolutionInt;
-        output.elevation[index] = elevationCorr * kResolutionInt; 
-        pChnUnit = pChnUnit + 1;  
+        output.elevation[index] = elevationCorr * kResolutionInt;
+        pChnUnit = pChnUnit + 1;
         index++;
       }
     }
@@ -526,10 +526,10 @@ int Udp3_2Parser<T_Point>::DecodePacket(LidarDecodedPacket<T_Point> &output, con
       output.scan_complete = true;
     }
     this->last_last_azimuth_ = this->last_azimuth_;
-    this->last_azimuth_ = u16Azimuth;  
+    this->last_azimuth_ = u16Azimuth;
   }
   return 0;
-}  
+}
 
 template<typename T_Point>
 bool Udp3_2Parser<T_Point>::IsNeedFrameSplit(uint16_t azimuth) {
@@ -543,7 +543,7 @@ bool Udp3_2Parser<T_Point>::IsNeedFrameSplit(uint16_t azimuth) {
   int8_t rotation_flag = 1;
   uint16_t division = 0;
   // If last_last_azimuth_ != -1，the packet is the third, so we can determine whether the current packet requires framing
-  if (this->last_last_azimuth_ != -1) 
+  if (this->last_last_azimuth_ != -1)
   {
     // Get the division
     uint16_t division1 = abs(this->last_azimuth_ - this->last_last_azimuth_);
@@ -567,11 +567,11 @@ bool Udp3_2Parser<T_Point>::IsNeedFrameSplit(uint16_t azimuth) {
     {
       if (uint16_t(this->frame_start_azimuth_ * kResolutionInt) > this->last_azimuth_ || uint16_t(this->frame_start_azimuth_ * kResolutionInt <= azimuth)) {
         return true;
-      } 
+      }
       return false;
     }
-    // No angle jump occurs, the frame_start_azimuth must betwen last_azimuth and azimuth  
-    if (this->last_azimuth_ < azimuth && this->last_azimuth_ < uint16_t(this->frame_start_azimuth_ * kResolutionInt) 
+    // No angle jump occurs, the frame_start_azimuth must betwen last_azimuth and azimuth
+    if (this->last_azimuth_ < azimuth && this->last_azimuth_ < uint16_t(this->frame_start_azimuth_ * kResolutionInt)
         && azimuth >= uint16_t(this->frame_start_azimuth_ * kResolutionInt)) {
       return true;
     }
@@ -581,10 +581,10 @@ bool Udp3_2Parser<T_Point>::IsNeedFrameSplit(uint16_t azimuth) {
     {
       if (uint16_t(this->frame_start_azimuth_ * kResolutionInt) <= this->last_azimuth_ || uint16_t(this->frame_start_azimuth_ * kResolutionInt > azimuth)) {
         return true;
-      } 
+      }
       return false;
-    }  
-    if (this->last_azimuth_ > azimuth && this->last_azimuth_ > uint16_t(this->frame_start_azimuth_ * kResolutionInt) 
+    }
+    if (this->last_azimuth_ > azimuth && this->last_azimuth_ > uint16_t(this->frame_start_azimuth_ * kResolutionInt)
         && azimuth <= uint16_t(this->frame_start_azimuth_ * kResolutionInt)) {
       return true;
     }

@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright [2022] [Hesai Technology Co., Ltd] 
+// Copyright [2022] [Hesai Technology Co., Ltd]
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,6 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////////
 
-#define VERSION_MAJOR @VERSION_MAJOR@
-#define VERSION_MINOR @VERSION_MINOR@
-#define VERSION_TINY  @VERSION_TINY@
+#define VERSION_MAJOR @HESAI_VERSION_MAJOR@
+#define VERSION_MINOR @HESAI_VERSION_MINOR@
+#define VERSION_TINY  @HESAI_VERSION_TINY@
