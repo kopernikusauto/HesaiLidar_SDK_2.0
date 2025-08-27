@@ -234,6 +234,8 @@ void UdpParser<T_Point>::CreatGeneralParser(std::string lidar_type) {
     parser_ = new Udp4_3Parser<T_Point>();
   } else if (lidar_type == "Pandar128E3X" || lidar_type == "Pandar128") {
     parser_ = new Udp1_4Parser<T_Point>();
+  } else if (lidar_type == "JT128") {
+    parser_ = new Udp1_4Parser<T_Point>();
   } else if (lidar_type == "Pandar40S" || lidar_type == "Pandar40E3X") {
     parser_ = new Udp1_4Parser<T_Point>();
   } else if (lidar_type == "Pandar60S" || lidar_type == "Pandar64E3X") {

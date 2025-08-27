@@ -244,14 +244,19 @@ int Udp1_4Parser<T_Point>::DecodePacket(LidarDecodedPacket<T_Point> &output, con
       }
       pTailSeqNum->CalPktLoss(this->start_seqnum_, this->last_seqnum_, this->loss_count_, this->start_time_, this->total_loss_count_, this->total_start_seqnum_);
     }
-  }    
-  if (output.use_timestamp_type == 0) {
+  }
+  if (frame.use_timestamp_type == 0) {
     output.sensor_timestamp = pTail->GetMicroLidarTimeU64();
+#ifdef JT128_256
+    if (pHeader->GetBlockNum() == 2) {
+      output.sensor_timestamp += -pTail->GetTimestamp() + pTail->GetTimestamp() / 1000;
+    }
+#endif
   } else {
     output.sensor_timestamp = udpPacket.recv_timestamp;
   }
-  output.host_timestamp = GetMicroTickCountU64();
 
+  output.host_timestamp = GetMicroTickCountU64();
   // if(this->enable_packet_loss_tool_ == true) return 0 ;
   this->spin_speed_ = pTail->m_u16MotorSpeed;
   this->is_dual_return_= pTail->IsDualReturn();

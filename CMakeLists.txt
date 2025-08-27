@@ -9,11 +9,13 @@ set(HESAI_VERSION_MAJOR 2)
 set(HESAI_VERSION_MINOR 0)
 set(HESAI_VERSION_TINY  11)
 
+
 #cmake_policy(SET CMP0053 NEW)
 #set(CMAKE_BUILD_TYPE ON)
 #set(CMAKE_BUILD_TYPE Release)
 #add_definitions(-O3)
 #add_compile_options(-Wall)
+add_definitions(-DJT128_256)
 
 # 设置生成平台为 x64
 if(_MSC_VER)
