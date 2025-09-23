@@ -50,7 +50,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ptc_client.h"
 #include "driver_param.h"
 #ifndef _MSC_VER
-#include <endian.h>
+#include <sys/endian.h>
 #include <semaphore.h>
 #endif
 #define PKT_SIZE_40P (1262)
