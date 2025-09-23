@@ -50,7 +50,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ptc_client.h"
 #include "driver_param.h"
 #ifndef _MSC_VER
-#include <endian.h>
+#if defined(__linux__)
+#include <endian.h>       // Linux
+#elif defined(__APPLE__) && defined(__MACH__)
+#include <sys/endian.h>   // macOS / BSD
+#endif
 #include <semaphore.h>
 #endif
 #define PKT_SIZE_40P (1262)
