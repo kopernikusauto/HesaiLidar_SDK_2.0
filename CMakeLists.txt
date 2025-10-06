@@ -15,7 +15,6 @@ set(HESAI_VERSION_TINY  11)
 #set(CMAKE_BUILD_TYPE Release)
 #add_definitions(-O3)
 #add_compile_options(-Wall)
-add_definitions(-DJT128_256)
 
 # 设置生成平台为 x64
 if(_MSC_VER)

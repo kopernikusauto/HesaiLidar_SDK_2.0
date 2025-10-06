@@ -56,6 +56,10 @@ struct HS_LIDAR_BODY_CHN_UNIT_NO_CONF_ME_V4 {
   uint16_t m_u16Distance;
   uint8_t m_u8Reflectivity;
 
+  // The documentation is vague about the size of "unit without a confidence".
+  // Testing with a recorded data from a real device, it appears the confidence offset must be reseved.
+  uint8_t _reserved;
+
   uint16_t GetDistance() const { return little_to_native(m_u16Distance); }
   uint8_t GetReflectivity() const { return m_u8Reflectivity; }
   void Print() const {
@@ -420,7 +424,7 @@ struct HS_LIDAR_HEADER_ME_V4 {
   uint8_t m_u8Status;
 
 
-  uint16_t GetLaserNum() const { return 256; }
+  uint16_t GetLaserNum() const { return m_u8LaserNum; }
   uint8_t GetBlockNum() const { return m_u8BlockNum; }
   double GetDistUnit() const { return m_u8DistUnit / 1000.f; }
   uint8_t GetEchoCount() const { return m_u8EchoCount; }

@@ -50,6 +50,74 @@ Udp1_4Parser<T_Point>::Udp1_4Parser() {
 template<typename T_Point>
 Udp1_4Parser<T_Point>::~Udp1_4Parser() { printf("release general parser\n"); }
 
+template <typename T_Point>
+int Udp1_4Parser<T_Point>::LoadCorrectionString(char *correction_string) {
+  try {
+    std::string correction_content_str(correction_string);
+    std::istringstream ifs(correction_content_str);
+    std::string line;
+    std::string hash = "";
+    int is_hav_eeff = 0;
+    // skip first line "Laser id,Elevation,Azimuth" or "eeff"
+    std::getline(ifs, line);
+    float elevation_list[MAX_LASER_NUM], azimuth_list[MAX_LASER_NUM];
+    std::vector<std::string> vfirstLine;
+    split_string(vfirstLine, line, ',');
+    if (vfirstLine[0] == "EEFF" || vfirstLine[0] == "eeff") {
+      // skip second line
+      std::getline(ifs, line);
+      is_hav_eeff = 1;
+    }
+
+    int lineCount = 0;
+    while (std::getline(ifs, line)) {
+      std::vector<std::string> vLineSplit;
+      split_string(vLineSplit, line, ',');
+      if (vLineSplit.size() != 3) {
+        throw std::invalid_argument("invalid correction input file!(number of columns)");
+        continue;
+      } else {
+        lineCount++;
+        if (lineCount > MAX_LASER_NUM) {
+          throw std::invalid_argument("invalid correction input file!(count)");
+        }
+      }
+      float elevation, azimuth;
+      int laserId = 0;
+      laserId = std::stoi(vLineSplit[0]);
+      elevation = std::stof(vLineSplit[1]);
+      azimuth = std::stof(vLineSplit[2]);
+
+      if (laserId > MAX_LASER_NUM || laserId <= 0) {
+        throw std::invalid_argument("laser id is wrong in correction file. laser Id: "
+                                      + std::to_string(laserId) + ", line: " + std::to_string(lineCount));
+      }
+      if (laserId != lineCount) {
+        LogWarning("laser id is wrong in correction file. laser Id: %d, line: %d.  continue", laserId, lineCount);
+        lineCount--;
+        continue;
+      }
+      elevation_list[laserId - 1] = elevation;
+      azimuth_list[laserId - 1] = azimuth;
+    }
+
+    this->azimuth_collection_.clear();
+    this->azimuth_collection_.resize(lineCount, 0.0);
+    this->elevation_correction_.clear();
+    this->elevation_correction_.resize(lineCount, 0.0);
+    for (int i = 0; i < lineCount; ++i) {
+      this->elevation_correction_[i] = elevation_list[i];
+      this->azimuth_collection_[i] = azimuth_list[i];
+    }
+    this->get_correction_file_ = true;
+  } catch (const std::exception &e) {
+    LogFatal("load correction error: %s", e.what());
+    this->get_correction_file_ = false;
+    return -1;
+  }
+  return 0;
+}
+
 template<typename T_Point>
 void Udp1_4Parser<T_Point>::LoadFiretimesFile(std::string firetimes_path) {
   std::ifstream inFile(firetimes_path, std::ios::in);
@@ -154,6 +222,8 @@ int Udp1_4Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, LidarD
         elevation = (CIRCLE + elevation) % CIRCLE;
         azimuth = Azimuth + this->azimuth_collection_[i] * kResolutionInt;
         azimuth = (CIRCLE + azimuth) % CIRCLE;
+      } else {
+        LogWarning("the angle correction table is missing");
       } 
       if (packet.config.fov_start != -1 && packet.config.fov_end != -1)
       {

@@ -70,6 +70,7 @@ class Udp1_4Parser : public GeneralParser<T_Point> {
 
   // get lidar firetime correction file from local file,and pass to udp parser 
   virtual void LoadFiretimesFile(std::string firetimes_path);
+  virtual int LoadCorrectionString(char *correction_string) override;
 
   using GeneralParser<T_Point>::GetFiretimesCorrection;
   // compute lidar firetime correciton
