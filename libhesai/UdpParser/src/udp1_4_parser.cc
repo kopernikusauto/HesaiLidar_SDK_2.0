@@ -74,7 +74,6 @@ int Udp1_4Parser<T_Point>::LoadCorrectionString(char *correction_string) {
       std::vector<std::string> vLineSplit;
       split_string(vLineSplit, line, ',');
       if (vLineSplit.size() != 3) {
-        throw std::invalid_argument("invalid correction input file!(number of columns)");
         continue;
       } else {
         lineCount++;
