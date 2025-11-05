@@ -28,15 +28,8 @@
 
 #include <vector>
 #include "tcp_client.h"
-#include "tcp_ssl_client.h"
-#include "lidar_types.h"
 #include "driver_param.h"
 #include "ptc_parser.h"
-
-#define PKT_SIZE_40P (1262)
-#define PKT_SIZE_AC  (1256)
-#define PKT_SIZE_64  (1194)
-#define PKT_SIZE_20  (1270)
 
 namespace hesai
 {
@@ -58,26 +51,40 @@ const uint8_t  kPTCSetStandbyMode = 0x1C;
 const uint8_t  kPTCSetSpinSpeed = 0x17;
 const uint32_t kPTCSetTemFpgaRegister = 0x00010031;
 const uint8_t  kPTCSetFpgaRegister = 0x0D;
+const uint8_t  kPTCUpgradeLidar = 0x83;
+const uint8_t  kPTCRebootLidar = 0x10;
+const uint32_t kPTCUpgradeLidarSubCmd = 0x0000000D;
+
+typedef struct UpgradeProgress {
+    int total_packets;
+    int current_packet;
+    int status;
+    int error_code;
+} UpgradeProgress;
+typedef void *(*UpgradeProgressFunc_t)(void *);
 
 class PtcClient {
+ public:
+  using Mutex = std::mutex;
+  using LockS = std::lock_guard<Mutex>;
  public:
   PtcClient(std::string IP = kLidarIPAddr
             , uint16_t u16TcpPort = kTcpPort
             , bool bAutoReceive = false
-            , PtcMode client_mode = PtcMode::tcp
             , uint8_t ptc_version = 1
-            , const char* cert = nullptr
-            , const char* private_key = nullptr
-            , const char* ca = nullptr
             , uint32_t u32RecvTimeoutMs = 500
-            , uint32_t u32SendTimeoutMs = 500);
-  ~PtcClient() {}
+            , uint32_t u32SendTimeoutMs = 500
+            , float ptc_connect_timeout = -1);
+  ~PtcClient();
 
   PtcClient(const PtcClient &orig) = delete;
+  PtcClient& operator=(const PtcClient&) = delete;
 
   bool IsValidRsp(u8Array_t &byteStreamIn);
+  bool IsOpen();
 
   void TcpFlushIn();
+  void TryOpen();
   int QueryCommand(u8Array_t &byteStreamIn, u8Array_t &byteStreamOut, uint8_t u8Cmd );
   int SendCommand(u8Array_t &byteStreamIn, uint8_t u8Cmd);
   bool GetValFromOutput(uint8_t cmd, uint8_t retcode, const u8Array_t &payload, int start_pos, int length, u8Array_t &res);
@@ -90,6 +97,25 @@ class PtcClient {
   int GetFiretimesInfo(u8Array_t &dataOut);
   int GetChannelConfigInfo(u8Array_t &dataOut);
   int SetSocketTimeout(uint32_t u32RecMillisecond, uint32_t u32SendMillisecond);
+
+  int UpgradeLidar(u8Array_t &dataIn);
+  int UpgradeLidar(u8Array_t &dataIn, std::string Cmd_id, int &upgradeProgress);
+  int UpgradeLidar(u8Array_t &dataIn, uint32_t cmd_id, int is_extern, int &upgrade_progress);
+  void RegisterUpgradeProcessFunc(UpgradeProgressFunc_t func);
+  bool RebootLidar();
+  void SetUpgradeProgressFunc(UpgradeProgressFunc_t func);
+
+  /**
+   * @brief upgrade lidar patch
+   * 
+   * @param file_path                   lidar patch file path
+   * @param cmd_id                      ptc command id, like 0x83, 0x0000000D
+   * @param is_extern                   Is extern command, like 0x0000000D is extern command, 0x83 is not extern command
+   * @return int                        0: success, -1: fail
+   * @param upgrade_progress            Upgrade progress
+   * @return int                        0: success, -1: fail
+   */  
+  int UpgradeLidarPatch(const std::string &file_path, uint32_t cmd_id, int is_extern);  
 
   /**
    * @brief Set the lidar net
@@ -176,17 +202,31 @@ class PtcClient {
   uint32_t CRCCalc(uint8_t *bytes, int len); 
 
  public:
-  uint32_t m_CRCTable[256];                                              
+  void SetLidarIP(std::string);
+  void SetLidarIP(uint32_t);
+  uint32_t m_CRCTable[256];       
+  bool InitOpen;                       
+  int ret_code_;                
 
  private:
+  Mutex _mutex;
   static const std::string kLidarIPAddr;
   static const uint16_t kTcpPort = 9347;
   uint16_t m_u16PtcPort;
-  bool running_;
-  PtcMode client_mode_;
   uint8_t ptc_version_;
   std::shared_ptr<ClientBase> client_;
   std::shared_ptr<PtcParser> ptc_parser_;
+  std::thread *open_thread_ptr_;
+  std::string lidar_ip_;
+  uint16_t tcp_port_;
+  bool auto_receive_;
+  std::string cert_;
+  std::string private_key_;
+  std::string ca_;
+  uint32_t recv_timeout_ms_;
+  uint32_t send_timeout_ms_;
+  float ptc_connect_timeout_;
+  UpgradeProgressFunc_t upgradeProcessFunc;
 };
 }
 }

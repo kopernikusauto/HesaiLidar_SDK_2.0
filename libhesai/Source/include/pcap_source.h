@@ -28,6 +28,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef PCPASTREAMER_H_
 #define PCPASTREAMER_H_
 
+#define NOMINMAX
 #include <functional>
 #include <array>
 #include <deque>
@@ -148,11 +149,11 @@ struct PcapTCPv6Header : public PcapIPv6Header {
 static_assert(sizeof(PcapTCPv6Header) == 74);
 #pragma pack(pop)
 
-class PcapSource : public Source{
+class PcapSource : public Source {
 public:
     using Callback = std::function<int(const uint8_t*, uint32_t)>;
 public:
-    struct Private;
+    class Private;
 private:
     Private* _p;
     std::string pcap_path_;
@@ -164,6 +165,8 @@ private:
     TCP pcap_tcp_header_;
     std::array<uint8_t, 1500> payload_;
     int packet_interval_;
+    size_t begin_pos_;
+    bool is_loop_;
 public:
     PcapSource(std::string path, int packet_interval);
     PcapSource(const PcapSource&) = delete;
@@ -189,7 +192,7 @@ public:
                       int timeout = 20000);
     int distinationPort();
     void setPacketInterval(int microsecond);
-    virtual void SetSocketBufferSize(uint32_t u32BufSize) {};
+    virtual void SetSocketBufferSize(uint32_t u32BufSize) { (void)u32BufSize; };
 };
 }  // namespace lidar
 }  // namespace hesai

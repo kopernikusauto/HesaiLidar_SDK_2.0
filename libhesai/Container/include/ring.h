@@ -50,6 +50,12 @@ public:
     inline const T& operator[](size_t index) const;
     inline T* data();
     inline const T* data() const;
+    inline T* get_back_ptr();
+    inline T* get_front_ptr();
+    inline T* get_back_next_ptr();
+    inline T* get_front_next_ptr();
+    inline void push_back_ptr();
+    inline void push_front_ptr();
 };
 }  // namespace lidar
 }  // namespace hesai

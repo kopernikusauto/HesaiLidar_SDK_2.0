@@ -27,7 +27,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
 /*
- * File:       lidar.h
+ * File:       lidar_type.h
  * Author:     Zhang Yu <zhangyu@hesaitech.com>
  * Description: 
  */
@@ -41,25 +41,23 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 #include <functional>
 #include <memory>
-#define CHANNEL_NUM 256
-#define PACKET_NUM 3600
+#include <atomic>
+#include <array>
+#include <cmath>  
+#include <fstream>  
+#include "driver_param.h"
 namespace hesai
 {
 namespace lidar
 {
-
-//max point num of one packet, laser_num * block_num <= kMaxPointsNumPerPacket
-static constexpr uint16_t kMaxPointsNumPerPacket = 512;
 //max packet num of one frame, it means the capacity of frame buffer
-static constexpr uint16_t kMaxPacketNumPerFrame = 4000;
-//max points num of one frame
-static constexpr uint32_t kMaxPointsNumPerFrame = kMaxPointsNumPerPacket * kMaxPacketNumPerFrame;
+static constexpr uint16_t kMaxPacketNumPerFrame = 5000;
 //half of the max value in degrees, 1 LSB represents 0.01 degree, float type
 static constexpr float kHalfCircleFloat = 18000.0f;
 //half of the max value in degrees, 1 LSB represents 0.01 degree, int type
 static constexpr int kHalfCircleInt = 18000;
-//max value in degrees, 1 LSB represents 0.01 degree
-static constexpr int kCircle = 36000;
+//max value in degrees
+static constexpr float kCircle = 360.f;
 //laser azimuth resolution, 100 units represents 1 degree, int type
 static constexpr int kResolutionInt = 100;
 //laser azimuth resolution, 100 units represents 1 degree, float type
@@ -67,212 +65,301 @@ static constexpr float kResolutionFloat = 100.0f;
 //conversion factor between second and micorsecond
 static constexpr float kMicrosecondToSecond = 1000000.0f;
 static constexpr int kMicrosecondToSecondInt = 1000000;
-//the difference between last azimuth and current azimuth must be greater than this angle in split frame function,
-//to avoid split frame unsuccessfully
-static constexpr uint16_t kSplitFrameMinAngle = 300;
+static constexpr int kMicrosecondToNanosecondInt = 1000;
 //laser fine azimuth resolution, 1 LSB represents 0.01 / 256 degree, float type
-static constexpr float kFineResolutionFloat = 256.0f;
+static constexpr float kFineResolutionFloat = 1.0f;
+static constexpr float kAllFineResolutionFloat = kResolutionFloat * kFineResolutionFloat;
 //laser fine azimuth resolution, 1 LSB represents 0.01 / 256 degree, int type
-static constexpr int kFineResolutionInt = 256;
+static constexpr int kFineResolutionInt = 1;
+static constexpr int kAllFineResolutionInt = kResolutionInt * kFineResolutionInt;
 //synchronize host time with sensor time per kPcapPlaySynchronizationCount packets
-static constexpr int kPcapPlaySynchronizationCount = 100;
+static constexpr int kPcapPlaySynchronizationCount = 1;
+//length of fault message packet
+static constexpr int kFaultMessageLength = 99;
+//default udp data max lenth
+static const uint16_t kBufSize = 1500;
+static const uint16_t kPacketBufferSize = 36000;
 //min points of one frame for displaying frame message
 static constexpr int kMinPointsOfOneFrame = 1000;
 //max time interval between two frame
-static constexpr int kMaxTimeInterval = 150000;
+static constexpr int kMaxTimeInterval = 250000;
 
-//length of fault message packet
-static constexpr int kFaultMessageLength = 99;
+static constexpr int CIRCLE = (360 * kAllFineResolutionFloat);
 
-static constexpr int kPacketBufferSize = 36000;
-//default udp data max lenth
-static const uint16_t kBufSize = 1500;
-typedef struct LidarPointXYZI
+#pragma pack(push, 1)
+struct LidarPointXYZI
 {
     float x; 
     float y;             
     float z;             
-    float intensity;     
-} LidarPointXYZI;
+    uint8_t intensity;     
+};
 
-typedef struct LidarPointXYZIRT
+struct LidarPointXYZIRT
 {
     float x; 
     float y;             
     float z;             
-    float intensity;  
+    uint8_t intensity;  
     uint16_t ring;
     double timestamp;  
-} LidarPointXYZIRT;
+};
 
-typedef struct LidarPointRTHI
+struct LidarPointXYZICRT
 {
-    int theta; 
-    int phi;               
-    int radius;            
-    int intensity;         
-} LidarPointRTHI;
+    float x; 
+    float y;             
+    float z;             
+    uint8_t intensity;  
+    uint8_t confidence;  
+    uint16_t ring;
+    double timestamp;  
+};
 
-typedef struct _LidarDecodeConfig {
+struct LidarPointXYZAIW
+{
+    float x; 
+    float y;             
+    float z;             
+    float azimuthCalib;
+    uint8_t intensity;     
+    uint8_t weightFactor;
+};
+
+struct LidarDecodeConfig {
     int fov_start;
     int fov_end;
 
-    _LidarDecodeConfig()
-    {
+    LidarDecodeConfig() {
       fov_start = -1;
       fov_end = -1;
     }
-} LidarDecodeConfig;
-
-template <typename PointT>
-struct LidarDecodedPacket
-{
-    uint64_t host_timestamp;   
-    uint64_t sensor_timestamp; 
-    float duration;
-    double distance_unit;        
-    uint32_t maxPoints; 
-    uint32_t points_num;   
-    uint16_t block_num;
-    uint16_t laser_num;
-    int packet_index;   
-    bool scan_complete;    // when this packet is the last packet in one frame, this value should be true               
-    uint8_t reflectivities[kMaxPointsNumPerPacket];
-    uint16_t distances[kMaxPointsNumPerPacket];
-    float azimuth[kMaxPointsNumPerPacket];
-    float elevation[kMaxPointsNumPerPacket];
-    uint16_t azimuths;
-    uint16_t spin_speed;
-    uint8_t lidar_state;
-    uint8_t work_mode;
-    uint16_t use_timestamp_type;
-    LidarDecodeConfig config;
-    bool IsDecodedPacketValid() {
-      return block_num != 0;
-    }
 };
+
+struct LidarImuData {
+  double timestamp; 
+  double imu_accel_x;
+  double imu_accel_y;
+  double imu_accel_z;
+  double imu_ang_vel_x;
+  double imu_ang_vel_y;
+  double imu_ang_vel_z;
+
+  LidarImuData() {
+    timestamp = 0;
+    imu_accel_x = -1;
+    imu_accel_y = -1;
+    imu_accel_z = -1;
+    imu_ang_vel_x = -1;
+    imu_ang_vel_y = -1;
+    imu_ang_vel_z = -1;
+  }
+  bool isSameImuValue(const LidarImuData& other) const {
+    return imu_accel_x == other.imu_accel_x &&
+           imu_accel_y == other.imu_accel_y &&
+           imu_accel_z == other.imu_accel_z &&
+           imu_ang_vel_x == other.imu_ang_vel_x &&
+           imu_ang_vel_y == other.imu_ang_vel_y &&
+           imu_ang_vel_z == other.imu_ang_vel_z;
+  }
+};
+
+struct MonitorValue {
+    uint16_t value;
+    bool valid;
+    MonitorValue() {
+      value = 0;
+      valid = false;
+    }
+    MonitorValue(uint16_t _value, bool _valid) {
+      value = _value;
+      valid = _valid;
+    }
+  };
+struct LidarMonitorInfo {
+  bool isUpdate;
+  uint8_t TDM_version;
+  MonitorValue monitor_info1_[256];
+  MonitorValue monitor_info2_[256];
+  MonitorValue monitor_info3_[256];
+  LidarMonitorInfo() {
+    isUpdate = false;
+  }
+};
+
+struct LidarOpticalCenter {
+  float x;
+  float y;
+  float z;
+  LidarOpticalCenter() {
+    x = 0;
+    y = 0;
+    z = 0;
+  }
+  LidarOpticalCenter(float _x, float _y, float _z) {
+    x = _x;
+    y = _y;
+    z = _z;
+  }
+  void setNoFlag(LidarOpticalCenter other) {
+    x = other.x;
+    y = other.y;
+    z = other.z;
+  }
+  LidarOpticalCenter& operator=(LidarOpticalCenter&) = delete;  
+};
+
+struct JT128buffer {
+  uint8_t data[1100];
+};
+
+struct FrameDecodeParam {
+  uint8_t use_timestamp_type;  // 0: point cloud time, other: local time
+  bool pcap_time_synchronization; 
+  bool distance_correction_flag;
+  bool xt_spot_correction;
+  bool update_imu_flag;  // update imu flag
+  uint8_t echo_mode_filter;
+  LidarDecodeConfig config;
+  TransformParam transform;
+  int rotation_flag;
+  bool enable_packet_loss_tool_;
+  bool enable_packet_timeloss_tool_;
+  bool packet_timeloss_tool_continue_;
+  bool use_cuda;
+  FrameDecodeParam() {
+    use_timestamp_type = 0;
+    pcap_time_synchronization = false;
+    distance_correction_flag = false;
+    xt_spot_correction = false;
+    echo_mode_filter = 0;
+    rotation_flag = 0;
+    enable_packet_loss_tool_ = false;
+    enable_packet_timeloss_tool_ = false;
+    packet_timeloss_tool_continue_ = false;
+    use_cuda = false;
+    update_imu_flag = true;
+  }
+  void UpdateRotation(int rotation) {
+    if (abs(rotation_flag) == 10240) return;
+    if (abs(rotation_flag) > 128 * 8) rotation_flag /= 128;
+    rotation_flag += rotation;
+  }
+  void Init(const DriverParam& param) {
+    use_timestamp_type = param.decoder_param.use_timestamp_type;
+    pcap_time_synchronization = param.decoder_param.pcap_play_synchronization;
+    distance_correction_flag = param.decoder_param.distance_correction_flag;
+    config.fov_start = param.decoder_param.fov_start;
+    config.fov_end = param.decoder_param.fov_end;
+    transform = param.decoder_param.transform_param;
+    use_cuda = param.use_gpu;
+  }
+};
+#pragma pack(pop)
 
 template <typename PointT>
 class LidarDecodedFrame
 {
     public:
-    LidarDecodedFrame() {
-        points_num = 0;
-        packet_index = 0;
-        distance_unit = 0.0;
-        total_memory = new uint8_t[sizeof(PointT) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + 
-                                   sizeof(uint64_t) * kMaxPacketNumPerFrame + sizeof(uint16_t) * kMaxPacketNumPerFrame +
-                                   sizeof(float) * 2 * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket +
-                                   sizeof(uint16_t) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + 
-                                   sizeof(uint8_t) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket
-                                  ];
-        int offset = 0;
-        points = reinterpret_cast <PointT* >(total_memory + offset);
-        offset = sizeof(PointT) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + offset;
-        sensor_timestamp = reinterpret_cast<uint64_t* >(total_memory + offset);
-        offset = sizeof(uint64_t) * kMaxPacketNumPerFrame + offset;
-        azimuths = reinterpret_cast<uint16_t* >(total_memory + offset);
-        offset = sizeof(uint16_t) * kMaxPacketNumPerFrame + offset;
-        azimuth = reinterpret_cast<float* >(total_memory + offset);
-        offset = sizeof(float) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + offset;
-        elevation = reinterpret_cast<float* >(total_memory + offset);
-        offset = sizeof(float) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + offset;
-        distances = reinterpret_cast<uint16_t* >(total_memory + offset);
-        offset = sizeof(uint16_t) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + offset;
-        reflectivities = reinterpret_cast<uint8_t* >(total_memory + offset);
-
+    LidarDecodedFrame(uint16_t maxPacketNum = 5000, uint16_t maxNumPerPacket = 512) {
+        resetMalloc(maxPacketNum, maxNumPerPacket);
+        lidar_state = -1;
+        work_mode = -1;
+        packet_num = 0;
+        frame_index = 0;
         host_timestamp = 0;
-        major_version = 0;
-        minor_version = 0;
+        block_num = 0;
+        laser_num = 0; 
         return_mode = 0;
-        spin_speed = 0;
         points_num = 0;
+        per_points_num = 0;
+        scan_complete = false;
+    };
+    ~LidarDecodedFrame() {
+        if (total_memory) {
+            delete[] total_memory;
+            total_memory = nullptr;
+            points = nullptr;
+            jt128_buffer = nullptr;
+            sensor_timestamp = nullptr;
+        }
+    }
+    void resetMalloc(uint16_t maxPacketNum, uint16_t maxNumPerPacket) {
+      maxPackerPerFrame = maxPacketNum;
+      maxPointPerPacket = maxNumPerPacket;
+      if (total_memory) {
+          delete[] total_memory;
+          total_memory = nullptr;
+          points = nullptr;
+          jt128_buffer = nullptr;
+          sensor_timestamp = nullptr;
+      }
+      total_memory = new uint8_t[sizeof(PointT) * maxPackerPerFrame * maxPointPerPacket +
+                                sizeof(JT128buffer) * maxPackerPerFrame + 
+                                sizeof(uint64_t) * maxPackerPerFrame];
+      uint32_t offset = 0;
+      points = reinterpret_cast <PointT* >(total_memory + offset);
+      offset += (sizeof(PointT) * maxPackerPerFrame * maxPointPerPacket);
+      jt128_buffer = reinterpret_cast <JT128buffer* >(total_memory + offset);
+      offset += (sizeof(JT128buffer) * maxPackerPerFrame);
+      sensor_timestamp = reinterpret_cast <uint64_t* >(total_memory + offset);
+      offset += (sizeof(uint64_t) * maxPackerPerFrame);
+    }
+    LidarDecodedFrame(const LidarDecodedFrame&) = delete;
+    LidarDecodedFrame& operator=(const LidarDecodedFrame&) = delete;
+    void Update() {
         packet_num = 0;
         block_num = 0;
         laser_num = 0; 
-        packet_index = 0;
+        points_num = 0;
+        per_points_num = 0;
         scan_complete = false;
-        distance_unit = 0;
-        frame_index = 0;
-    };
-    ~LidarDecodedFrame() {
-        // delete points;
-        // points = nullptr;
-        // delete sensor_timestamp;
-        // sensor_timestamp = nullptr;
-        // delete azimuths;
-        // azimuths = nullptr;
-        // delete distances;
-        // distances = nullptr;
-        // delete reflectivities;
-        // reflectivities = nullptr;
-        // delete azimuth;
-        // azimuth = nullptr;
-        // delete elevation;
-        // elevation = nullptr;
-        if (total_memory) {
-          delete total_memory;
-          total_memory = nullptr;
-          sensor_timestamp = nullptr;
-          points = nullptr;
-          azimuths = nullptr;
-          reflectivities = nullptr;
-          azimuth = nullptr;
-          elevation = nullptr;
-          distances = nullptr;
-        }
+        frame_index++;
     }
-    void Update(){
-      host_timestamp = 0;
-      major_version = 0;
-      minor_version = 0;
-      return_mode = 0;
-      spin_speed = 0;
-      points_num = 0;
-      packet_num = 0;
-      block_num = 0;
-      laser_num = 0; 
-      packet_index = 0;
-      scan_complete = false;
-      distance_unit = 0;
-      lidar_state = (uint8_t)(-1);
-      work_mode = (uint8_t)(-1);
-      frame_index++;
+    uint32_t getPointSize() {
+      return sizeof(PointT);
     }
-    uint64_t host_timestamp;   
-    uint64_t* sensor_timestamp = nullptr; 
-    uint8_t major_version;
-    uint8_t minor_version;
+    uint8_t* total_memory = nullptr; 
+    uint16_t maxPackerPerFrame;
+    uint16_t maxPointPerPacket;
+    // configure
+    FrameDecodeParam fParam;
+
+    // frame parameter
+    int16_t lidar_state;
+    int16_t work_mode;
     uint16_t return_mode;
-    uint16_t spin_speed;        
-    uint32_t points_num; 
-    uint32_t packet_num;
-    uint8_t* total_memory = nullptr;                  
-    PointT* points = nullptr;
-    uint16_t* azimuths = nullptr;
-    uint8_t* reflectivities = nullptr;
-    float* azimuth = nullptr;
-    float* elevation = nullptr;
-    uint16_t* distances = nullptr;
+    uint32_t packet_num; 
+    int frame_index;
+    uint32_t points_num;
+    JT128buffer* jt128_buffer;
+    uint64_t* sensor_timestamp;
+    // package parameter
+    uint64_t host_timestamp;
+    LidarMonitorInfo monitor_info;
     uint16_t block_num;
     uint16_t laser_num;
-    uint16_t packet_index;
+    uint16_t per_points_num;
     bool scan_complete;
-    double distance_unit;
-    int frame_index;
-    uint8_t lidar_state;
-    uint8_t work_mode;
+    // point parameter
+    PointT* points = nullptr;
+    //special output
+    LidarImuData imu_config;
 };
-
 
 struct UdpPacket {
   uint8_t buffer[1500];
-  int16_t packet_len;
+  uint16_t packet_len;
   bool is_timeout = false;
   uint64_t recv_timestamp;
-  UdpPacket(const uint8_t* data = nullptr, uint32_t sz = 0)
-  : packet_len(sz)
+  uint32_t ip;
+  uint16_t port;
+  UdpPacket(const uint8_t* data = nullptr, uint16_t sz = 0, uint64_t tm = 0, 
+            uint32_t i_ip = 0, uint16_t i_port = 0)
+  : packet_len(sz), recv_timestamp(tm), ip(i_ip), port(i_port)
   {
+    memset(buffer, 0, 1500);
+    if(data != nullptr)
       memcpy(buffer, data, packet_len);
   }
 };
@@ -288,100 +375,143 @@ typedef std::vector<std::string> stringArray_t;
 typedef std::vector<UdpPacket> UdpFrame_t;
 typedef std::vector<UdpFrame_t> UdpFrameArray_t;
 
-#define PANDAR_AT128_LIDAR_NUM (128)
-#define LENS_AZIMUTH_AREA_NUM (12)
-#define LENS_ELEVATION_AREA_NUM (8)
+class SHA256_USE {  
+public:  
+    SHA256_USE() {  
+        // Initialize the hash values  
+        state = {{  
+            0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,  
+            0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19  
+        }};  
+        bufferIndex = 0;  
+        bitcount = 0;  
+    }  
 
-enum LidarOperateState {
-  kBoot,
-  kInit,
-  kFullPerformance,
-  kHalfPower,
-  kSleepMode,
-  kHighTempertureShutdown,
-  kFaultShutdown,
-  kUndefineOperateState = -1,
-};
+    void update(const char* data, size_t length) {  
+        for (size_t i = 0; i < length; i++) {  
+            buffer[bufferIndex++] = data[i];  
+            if (bufferIndex == 64) {  
+                transform(buffer.data());  
+                bufferIndex = 0;  
+            }  
+            bitcount += 8;  
+        }  
+    }  
 
-enum LidarFaultState {
-  kNormal,
-  kWarning,
-  kPrePerformanceDegradation,
-  kPerformanceDegradation,
-  kPreShutDown,
-  kShutDown,
-  kPreReset,
-  kReset,
-  kUndefineFaultState = -1,
-};
+    void hexdigest(uint8_t *hash) {  
+        pad();  
+        for (auto data : state) {
+          *hash = (data >> 24) & 0xFF;
+          *(hash + 1) = (data >> 16) & 0xFF;
+          *(hash + 2) = (data >> 8) & 0xFF;
+          *(hash + 3) = (data >> 0) & 0xFF;
+          hash += sizeof(uint32_t);
+        }
+    }  
 
-enum FaultCodeType {
-  kUndefineFaultCode = -1,
-  kCurrentFaultCode = 1,
-  kHistoryFaultCode = 2,
-};
+private:  
+    void transform(const uint8_t* data) {  
+        // Prepare the message schedule  
+        std::array<uint32_t, 64> w = {};  
+        for (size_t i = 0; i < 16; i++) {  
+            w[i] = ((uint32_t)data[i * 4] << 24) | ((uint32_t)data[i * 4 + 1] << 16) |  
+                   ((uint32_t)data[i * 4 + 2] << 8) | (uint32_t)data[i * 4 + 3];  
+        }  
 
-enum DTCState {
-  kNoFault,
-  kFault,
-};
+        for (size_t i = 16; i < 64; i++) {  
+            uint32_t s0 = (w[i - 15] >> 7) | (w[i - 15] << (32 - 7));  
+            s0 ^= (w[i - 15] >> 18) | (w[i - 15] << (32 - 18));  
+            s0 ^= (w[i - 15] >> 3);  
+            uint32_t s1 = (w[i - 2] >> 17) | (w[i - 2] << (32 - 17));  
+            s1 ^= (w[i - 2] >> 19) | (w[i - 2] << (32 - 19));  
+            s1 ^= (w[i - 2] >> 10);  
+            w[i] = w[i - 16] + s0 + w[i - 7] + s1;  
+        }  
 
-enum TDMDataIndicate {
-  kInvaild = 0,
-  kLensDirtyInfo = 1,
-  kUndefineIndicate = -1,
-};
+        // Initialize working variables to current hash value  
+        uint32_t a = state[0];  
+        uint32_t b = state[1];  
+        uint32_t c = state[2];  
+        uint32_t d = state[3];  
+        uint32_t e = state[4];  
+        uint32_t f = state[5];  
+        uint32_t g = state[6];  
+        uint32_t h = state[7];  
 
-enum LensDirtyState {
-  kUndefineData = -1,
-  kLensNormal = 0,
-  kPassable = 1,
-  kUnPassable = 3,
-};
+        // Compression function main loop  
+        for (size_t i = 0; i < 64; i++) {  
+            uint32_t S1 = (e >> 6) | (e << (32 - 6));  
+            S1 ^= (e >> 11) | (e << (32 - 11));  
+            S1 ^= (e >> 25) | (e << (32 - 25));  
+            uint32_t ch = (e & f) ^ (~e & g);  
+            uint32_t temp1 = h + S1 + ch + k[i] + w[i];  
+            uint32_t S0 = (a >> 2) | (a << (32 - 2));  
+            S0 ^= (a >> 13) | (a << (32 - 13));  
+            S0 ^= (a >> 22) | (a << (32 - 22));  
+            uint32_t maj = (a & b) ^ (a & c) ^ (b & c);  
+            uint32_t temp2 = S0 + maj;  
 
-enum HeatingState {
-  kOff = 0,
-  kHeating = 1,
-  kHeatingProhibit = 2,
-  kUndefineHeatingState = -1,
-};
+            h = g;  
+            g = f;  
+            f = e;  
+            e = d + temp1;  
+            d = c;  
+            c = b;  
+            b = a;  
+            a = temp1 + temp2;  
+        }  
 
-enum HighTempertureShutdownState {
-  kPreShutdown = 1,
-  kShutdownMode1 = 2,
-  kShutdownMode2 = 6,
-  kShutdownMode2Fail = 10,
-  kUndefineShutdownData = -1,
-};
+        // Add the compressed chunk to the current hash value  
+        state[0] += a;  
+        state[1] += b;  
+        state[2] += c;  
+        state[3] += d;  
+        state[4] += e;  
+        state[5] += f;  
+        state[6] += g;  
+        state[7] += h;  
+    }  
 
-struct FaultMessageInfo {
-  uint8_t version;
-  uint8_t utc_time[6];
-  uint32_t timestamp;
-  double total_time;
-  LidarOperateState operate_state;
-  LidarFaultState fault_state;
-  FaultCodeType faultcode_type;
-  uint8_t rolling_counter;
-  uint8_t total_faultcode_num;
-  uint8_t faultcode_id;
-  uint32_t faultcode;
-  int dtc_num;
-  DTCState dtc_state;
-  TDMDataIndicate tdm_data_indicate;
-  double temperature;
-  LensDirtyState lens_dirty_state[LENS_AZIMUTH_AREA_NUM]
-                                 [LENS_ELEVATION_AREA_NUM];
-  uint16_t software_id;
-  uint16_t software_version;
-  uint16_t hardware_version;
-  uint16_t bt_version;
-  HeatingState heating_state;
-  HighTempertureShutdownState high_temperture_shutdown_state;
-  uint8_t reversed[3];
-  uint32_t crc;
-  uint8_t cycber_security[32];
-};
+    void pad() {  
+        buffer[bufferIndex++] = 0x80;  
+        if (bufferIndex > 56) {  
+            while (bufferIndex < 64) {  
+                buffer[bufferIndex++] = 0x00;  
+            }  
+            transform(buffer.data());  
+            bufferIndex = 0;  
+        }  
+        while (bufferIndex < 56) {  
+            buffer[bufferIndex++] = 0x00;  
+        }  
+        // Append the bits count  
+        for (int i = 0; i < 8; i++) {  
+            buffer[56 + i] = (bitcount >> (56 - i * 8)) & 0xFF;  
+        }  
+        transform(buffer.data());  
+    }  
+
+    std::array<uint32_t, 8> state;  
+    std::array<uint8_t, 64> buffer;  
+    uint64_t bitcount;  
+    size_t bufferIndex;  
+
+    const std::array<uint32_t, 64> k = {  
+      0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL, 0x3956c25bUL,
+      0x59f111f1UL, 0x923f82a4UL, 0xab1c5ed5UL, 0xd807aa98UL, 0x12835b01UL,
+      0x243185beUL, 0x550c7dc3UL, 0x72be5d74UL, 0x80deb1feUL, 0x9bdc06a7UL,
+      0xc19bf174UL, 0xe49b69c1UL, 0xefbe4786UL, 0x0fc19dc6UL, 0x240ca1ccUL,
+      0x2de92c6fUL, 0x4a7484aaUL, 0x5cb0a9dcUL, 0x76f988daUL, 0x983e5152UL,
+      0xa831c66dUL, 0xb00327c8UL, 0xbf597fc7UL, 0xc6e00bf3UL, 0xd5a79147UL,
+      0x06ca6351UL, 0x14292967UL, 0x27b70a85UL, 0x2e1b2138UL, 0x4d2c6dfcUL,
+      0x53380d13UL, 0x650a7354UL, 0x766a0abbUL, 0x81c2c92eUL, 0x92722c85UL,
+      0xa2bfe8a1UL, 0xa81a664bUL, 0xc24b8b70UL, 0xc76c51a3UL, 0xd192e819UL,
+      0xd6990624UL, 0xf40e3585UL, 0x106aa070UL, 0x19a4c116UL, 0x1e376c08UL,
+      0x2748774cUL, 0x34b0bcb5UL, 0x391c0cb3UL, 0x4ed8aa4aUL, 0x5b9cca4fUL,
+      0x682e6ff3UL, 0x748f82eeUL, 0x78a5636fUL, 0x84c87814UL, 0x8cc70208UL,
+      0x90befffaUL, 0xa4506cebUL, 0xbef9a3f7UL, 0xc67178f2UL 
+    };   
+};  
 
 }  // namespace lidar
 }  // namespace hesai

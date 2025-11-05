@@ -28,72 +28,156 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /*
  * File:       udp1_4_parser.h
- * Author:     Zhang Yu <zhangyu@hesaitech.com>
+ * Author:     Chang XingShuo <changxingshuo@hesaitech.com>
  * Description: Declare Udp1_4Parser class
 */
 
 #ifndef UDP1_4_PARSER_H_
 #define UDP1_4_PARSER_H_
-
-#include "general_parser.h"
+#include "lidar_types.h"
+#include <iostream>
+#include <iomanip>
+#include "udp_protocol_v1_4.h"
 namespace hesai
 {
 namespace lidar
 {
+#define DEFAULT_MAX_LASER_NUM (128)
+#ifndef M_PI
+#define M_PI (3.14159265358979323846)
+#endif
 
-struct FiretimeSectionValues {
-    struct SectionValue {
-        std::array<int, 2> firetime;
-    };
-    std::array<SectionValue, 8> section_values;
+#define DEFINE_MEMBER_CHECKER(member)                                                                                  \
+  template <typename T, typename V = bool>                                                                             \
+  struct has_##member : std::false_type                                                                                \
+  {                                                                                                                    \
+  };                                                                                                                   \
+  template <typename T>                                                                                                \
+  struct has_##member<                                                                                                 \
+      T, typename std::enable_if<!std::is_same<decltype(std::declval<T>().member), void>::value, bool>::type>          \
+      : std::true_type                                                                                                 \
+  {                                                                                                                    \
+  };
+#define PANDAR_HAS_MEMBER(C, member) has_##member<C>::value
+
+#define DEFINE_SET_GET(member, Type)                                                                                   \
+  template <typename T_Point>                                                                                          \
+  inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, member)>::type set_##member(T_Point& point, const Type& value) \
+  {                                                                                                                    \
+  }                                                                                                                    \
+  template <typename T_Point>                                                                                          \
+  inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, member)>::type set_##member(T_Point& point, const Type& value) \
+  {                                                                                                                    \
+      point.member = value;                                                                                            \
+  }                                                                                                                    \
+  template <typename T_Point>                                                                                          \
+  inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, member)>::type get_##member(T_Point& point, Type& value)  \
+  {                                                                                                                    \
+  }                                                                                                                    \
+  template <typename T_Point>                                                                                          \
+  inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, member)>::type get_##member(T_Point& point, Type& value)  \
+  {                                                                                                                    \
+      value = point.member;                                                                                            \
+  }  
+
+DEFINE_MEMBER_CHECKER(x)
+DEFINE_MEMBER_CHECKER(y)
+DEFINE_MEMBER_CHECKER(z)
+DEFINE_MEMBER_CHECKER(intensity)
+DEFINE_MEMBER_CHECKER(ring)
+DEFINE_MEMBER_CHECKER(timestamp)
+DEFINE_MEMBER_CHECKER(weightFactor)
+
+DEFINE_SET_GET(x, float)  
+DEFINE_SET_GET(y, float)  
+DEFINE_SET_GET(z, float)  
+DEFINE_SET_GET(intensity, uint8_t)  
+DEFINE_SET_GET(ring, uint16_t)  
+DEFINE_SET_GET(timestamp, double)  
+DEFINE_SET_GET(weightFactor, uint8_t)
+
+
+enum StructType {
+  CORRECTION_STRUCT = 1,
+  FIRETIME_STRUCT = 2
+};
+
+enum DistanceCorrectionType {
+  OpticalCenter,
+  GeometricCenter,
+};
+
+struct CorrectionData {
+  double elevation[DEFAULT_MAX_LASER_NUM];
+  double azimuth[DEFAULT_MAX_LASER_NUM];
+  int int_elevation[DEFAULT_MAX_LASER_NUM];
+  int int_azimuth[DEFAULT_MAX_LASER_NUM];
+  bool display[DEFAULT_MAX_LASER_NUM];
+  std::string hash;
+  CorrectionData() {
+    memset(elevation, 0, sizeof(double) * DEFAULT_MAX_LASER_NUM);
+    memset(azimuth, 0, sizeof(double) * DEFAULT_MAX_LASER_NUM);
+    for (int i = 0; i < DEFAULT_MAX_LASER_NUM; ++i) {  
+        display[i] = true;
+    } 
+    hash = "";
+  }
 };
 // class Udp1_4Parser
-// parsers packets and computes points for Pandar128
-// you can parser the upd or pcap packets using the DocodePacket fuction
-// you can compute xyzi of points using the ComputeXYZI fuction, which uses cpu to compute
+// parsers packets and computes points for JT16
 template<typename T_Point>
-class Udp1_4Parser : public GeneralParser<T_Point> {
+class Udp1_4Parser {
  public:
   Udp1_4Parser();
   virtual ~Udp1_4Parser();
 
-  // covert a origin udp packet to decoded packet, the decode function is in UdpParser module
-  // udp_packet is the origin udp packet, output is the decoded packet
-  virtual int DecodePacket(LidarDecodedPacket<T_Point> &output, const UdpPacket& udpPacket);
+  int DecodePacket_true(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket);    
+  int DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket);    
 
-  // covert a origin udp packet to decoded data, and pass the decoded data to a frame struct to reduce memory copy
-  virtual int DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket);
-
-  // compute xyzi of points from decoded packet
-  // param packet is the decoded packet; xyzi of points after computed is puted in frame      
-  virtual int ComputeXYZI(LidarDecodedFrame<T_Point> &frame, LidarDecodedPacket<T_Point> &packet);
-
-  // get lidar firetime correction file from local file,and pass to udp parser 
-  virtual void LoadFiretimesFile(std::string firetimes_path);
-  virtual int LoadCorrectionString(char *correction_string) override;
-
-  using GeneralParser<T_Point>::GetFiretimesCorrection;
-  // compute lidar firetime correciton
-  double GetFiretimesCorrection(int laserId, double speed, uint8_t optMode, uint8_t angleState,uint16_t dist);
+  void LoadFiretimesFile(const std::string firetimes_path);
+  void LoadCorrectionFile(const std::string lidar_correction_file);
+  int LoadCorrectionString(const char *correction_string, const int len);
+  // get the pointer to the struct of the parsed correction file or firetimes file
+  void* getStruct(const int type);
   
-  // determine whether frame splitting is needed
-  bool IsNeedFrameSplit(uint16_t azimuth); 
 
-  using GeneralParser<T_Point>::GetDistanceCorrection;
-  // compute lidar distance correction
-  void GetDistanceCorrection(int laser_id, float distance, int& azimuth, int& elevation);
-//   virtual int ComputeXYZI(LidarDecodedFrame &frame, LidarDecodedPacket &packet);
-
+  // set the parsing type
+  void SetPcapPlay(int source_type);
+  // set frame azimuth
+  void SetFrameAzimuth(float frame_start_azimuth);
+  void CircleRevise(int &angle);
+  void TransformPoint(float& x, float& y, float& z, const TransformParam& transform);
+  // crc
+  void CRCInit();
+  uint32_t CRCCalc(const uint8_t *bytes, int len, int zeros_num);
+  // compute optical center correction
+  void GetDistanceCorrection(LidarOpticalCenter optical_center, int &azimuth, int &elevation, float &distance, DistanceCorrectionType type);
+  // determine whether to frame based on azimuth
+  bool IsNeedFrameSplit(uint16_t azimuth, FrameDecodeParam &param);
+  bool isSetCorrectionSucc() { return get_correction_file_; }
+  bool isSetFiretimesSucc() { return get_firetime_file_; }
+  
  private:
-  static const int kLaserNum = 128;
-  double section_distance;
-  std::array<FiretimeSectionValues, kLaserNum> firetime_section_values;
-  float distance_correction_para_a_;
-  float distance_correction_para_b_; 
-  float distance_correction_para_h_; 
-  float distance_correction_para_c_; 
-  float distance_correction_para_d_; 
-  bool use_frame_start_azimuth_ = true;
+  int source_type_;
+  uint16_t frame_start_azimuth_uint16_;
+  LidarOpticalCenter optical_center;
+  float firetime_correction_[DEFAULT_MAX_LASER_NUM];
+  bool get_firetime_file_;
+  CorrectionData correction;
+  bool get_correction_file_;
+  int32_t last_azimuth_;
+  int32_t last_last_azimuth_;
+  float cos_all_angle_[CIRCLE];
+  float sin_all_angle_[CIRCLE];
+  // synchronization
+  bool first_packet_;
+  uint64_t last_host_timestamp_;
+  uint64_t last_sensor_timestamp_;
+  uint8_t packet_count_;
+  bool printErrorBool;
+  uint32_t m_CRCTable[256];
+  bool crc_initialized;
+  LastUtcTime last_utc_time_;
 };
 }  // namespace lidar
 }  // namespace hesai

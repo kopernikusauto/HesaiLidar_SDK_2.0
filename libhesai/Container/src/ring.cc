@@ -73,7 +73,7 @@ template <typename T, size_t N>
 inline const T& Ring<T, N>::peek_back() const { assert(!empty()); return (*_ring)[(_begin + _size - 1) % N]; }
 
 template <typename T, size_t N>
-inline T Ring<T, N>::pop_back() { assert(!empty()); --_size; T item; std::swap(item, (*_ring)[(_begin + _size) % N]); return item; }
+inline T Ring<T, N>::pop_back() { assert(!empty()); --_size; T item; std::swap(item, (*_ring)[(_begin + _size - 1) % N]); return item; }
 
 template <typename T, size_t N>
 inline void Ring<T, N>::eff_pop_back() { --_size; }
@@ -118,3 +118,20 @@ inline T* Ring<T, N>::data() { return _ring->data(); }
 template <typename T, size_t N>
 inline const T* Ring<T, N>::data() const { return _ring->data(); };
 
+template <typename T, size_t N>
+inline T* Ring<T, N>::get_back_ptr() { assert(!empty()); return &(*_ring)[(_begin + _size - 1) % N]; }
+
+template <typename T, size_t N>
+inline T* Ring<T, N>::get_front_ptr() { assert(!empty()); return &(*_ring)[_begin]; }
+
+template <typename T, size_t N>
+inline T* Ring<T, N>::get_back_next_ptr() { assert(!full()); return &(*_ring)[(_begin + _size) % N]; }
+
+template <typename T, size_t N>
+inline T* Ring<T, N>::get_front_next_ptr() { assert(!full()); return &(*_ring)[(_begin + N - 1) % N]; }
+
+template <typename T, size_t N>
+inline void Ring<T, N>::push_back_ptr() { assert(!full()); ++_size; }
+
+template <typename T, size_t N>
+inline void Ring<T, N>::push_front_ptr() { assert(!full()); _begin = (_begin + N - 1) % N; ++_size; }

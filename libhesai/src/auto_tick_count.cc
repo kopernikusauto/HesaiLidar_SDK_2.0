@@ -126,7 +126,7 @@ int TickCount::ShowTimeSlice(std::string sLogFile, bool bSaveSysTime) {
                 static_cast<double>(iter->second.at(i)) / kMicroToSec);
     }
 
-    iter++;
+    ++iter;
   }
   m_u64EndTime = GetMicroTickCountU64();
 
@@ -137,10 +137,14 @@ int TickCount::ShowTimeSlice(std::string sLogFile, bool bSaveSysTime) {
   if (pFileSel != NULL)
     fprintf(pFileSel, "total cost:%s\n", GetTimeCost().c_str());
 
-  fclose(pFile);
-  pFile = NULL;
-  fclose(pFileSel);
-  pFileSel = NULL;
+  if(pFile != NULL){
+    fclose(pFile);
+    pFile = NULL;
+  }
+  if(pFileSel != NULL){
+    fclose(pFileSel);
+    pFileSel = NULL;
+  }
 
   return 0;
 }
@@ -188,7 +192,7 @@ int TickCount::End(std::string sKey, bool bShow) {
 
   uint64_t u64TimeCost = u64Time - m_startTime[sKey];
   for (std::map<std::string, uint64_t>::iterator it = m_startTime.begin();
-       it != m_startTime.end(); it++) {
+       it != m_startTime.end(); ++it) {
     if (it->first == sKey) {
       m_startTime.erase(it);
       break;

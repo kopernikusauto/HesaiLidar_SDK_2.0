@@ -1,5 +1,5 @@
-#ifndef ___HESAI__CONTAINER__BLOCKING_RING_HH___
-#define ___HESAI__CONTAINER__BLOCKING_RING_HH___
+#ifndef ___HESAI__CONTAINER__BLOCKING_PTR_RING_HH___
+#define ___HESAI__CONTAINER__BLOCKING_PTR_RING_HH___
 
 #include "ring.h"
 #include <mutex>
@@ -12,7 +12,7 @@ namespace hesai
 namespace lidar
 {
 template <typename T, size_t N>
-class BlockingRing : public Ring<T, N>{
+class BlockingPtrRing : public Ring<T, N>{
 public:
     using Super = Ring<T, N>;
     using Mutex = std::mutex;
@@ -23,24 +23,25 @@ private:
     Mutex _mutex;
     Condv _condv;
 public:
-    template <typename... Args>
-    void emplace_back(Args&&... args);
-    void push_back(T&& item);
-    T pop_back();
-    void push_front(T&& item);
-    T pop_front();
-    bool try_pop_front(T&);
+    T* get_back_ptr();
+    void pop_back_ptr();
+    T* get_back_next_ptr();
+    void push_back_ptr();
+    T* get_front_ptr();
+    void push_front_ptr();
+    T* get_front_next_ptr();
+    void pop_front_ptr();
+    bool try_get_front_ptr(T**);
     bool empty();
     bool not_empty();
     bool full();
     bool not_full();
     void clear();
     void eff_clear();
-    void eff_pop_front();
 };
 }  // namespace lidar
 }  // namespace hesai
 
-#include "blocking_ring.cc"
+#include "blocking_ptr_ring.cc"
 
-#endif // !___HESAI__CONTAINER__BLOCKING_RING_HH___
+#endif // !___HESAI__CONTAINER__BLOCKING_PTR_RING_HH___
