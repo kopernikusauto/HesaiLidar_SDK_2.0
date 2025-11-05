@@ -102,18 +102,34 @@ typedef struct DecoderParam
 ///< The LiDAR input parameter
 typedef struct InputParam  
 {
+  PtcMode ptc_mode = PtcMode::tcp;
   SourceType source_type = DATA_FROM_PCAP;
   // Ip of Lidar
   std::string device_ip_address = "";   
   ///< Address of multicast
-  std::string multicast_ip_address = "";  
+  std::string multicast_ip_address = "";
+  ///< Address of host
+  std::string host_ip_address = "Your host ip";
   uint16_t udp_port = 2368;   
   uint16_t ptc_port = 9347;
   bool is_use_ptc = false;
   ///< serial port and baudrate
+  bool read_pcap = false;          ///< true: The driver will process the pcap through pcap_path. false: The driver will
+                                   ///< Get data from online LiDAR
   std::string pcap_path = "Your pcap file path";  ///< Absolute path of pcap file
   std::string correction_file_path = "Your correction file path";   ///< Path of angle calibration files(angle.csv).Only used for internal debugging.
   std::string firetimes_path = "Your firetime file path";  ///< Path of firetime files(angle.csv).
+
+  /// certFile          Represents the path of the user's certificate
+  const char* certFile = nullptr;
+   /// privateKeyFile    Represents the path of the user's private key
+  const char* privateKeyFile = nullptr;
+   /// caFile            Represents the path of the root certificate
+  const char* caFile = nullptr;
+    /// standby_mode    set the standby_mode of lidar
+  int standby_mode = -1;
+  /// speed             set the rotational speed of lidar
+  int speed = -1;
 
   bool send_packet_ros;
   bool send_point_cloud_ros;
@@ -138,7 +154,9 @@ typedef struct DriverParam
   ///< Decoder parameter        
   DecoderParam decoder_param;  
   ///< The frame id of LiDAR message    
-  std::string frame_id = "hesai";  
+  std::string frame_id = "hesai";
+  ///< Lidar type
+  std::string lidar_type = "AT128";
   bool use_gpu = false;
   uint8_t log_level = LOG_INFO | LOG_WARNING | LOG_ERROR | LOG_FATAL; //
   uint8_t log_Target = LOG_TARGET_CONSOLE | LOG_TARGET_FILE;
