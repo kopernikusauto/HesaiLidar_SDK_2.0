@@ -26,7 +26,8 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF TH
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
-#pragma once
+#ifndef DRIVER_PARAM_H
+#define DRIVER_PARAM_H
 #include <string>
 #include "logger.h"  
 namespace hesai
@@ -34,7 +35,9 @@ namespace hesai
 namespace lidar
 {
 
-#define NULL_TOPIC  "your topic name"
+#ifndef NULL_TOPIC
+#define NULL_TOPIC "your topic name"
+#endif
 
 enum SourceType
 {
@@ -136,3 +139,5 @@ typedef struct DriverParam
 } DriverParam;
 }  // namespace lidar
 }  // namespace hesai
+
+#endif /* DRIVER_PARAM_H */

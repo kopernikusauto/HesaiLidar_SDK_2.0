@@ -23,6 +23,7 @@ add_library(HesaiLidar
 target_include_directories(HesaiLidar PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Lidar>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Logger/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpProtocol>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpParser/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpParser/src>

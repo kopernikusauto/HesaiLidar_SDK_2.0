@@ -36,12 +36,13 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define Lidar_H
 #include <time.h>
 #include "lidar_types.h"
+#include "general_parser.h"
 #include "udp1_4_parser.h"
 #include "pcap_source.h"
 #include "blocking_ring.h"
 #include "blocking_ptr_ring.h"
 #include "ring.h"
-#include "driver_param.h"
+// #include "driver_param.h"
 #include "socket_source.h"
 #include "ptc_client.h"
 #include "pcap_saver.h"

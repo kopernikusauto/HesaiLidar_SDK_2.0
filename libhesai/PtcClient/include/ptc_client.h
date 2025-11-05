@@ -28,7 +28,7 @@
 
 #include <vector>
 #include "tcp_client.h"
-#include "driver_param.h"
+#include "lidar_types.h"
 #include "ptc_parser.h"
 
 namespace hesai
