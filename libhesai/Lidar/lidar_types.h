@@ -258,6 +258,34 @@ struct FrameDecodeParam {
 #pragma pack(pop)
 
 template <typename PointT>
+struct LidarDecodedPacket
+{
+    uint64_t host_timestamp;   
+    uint64_t sensor_timestamp; 
+    float duration;
+    double distance_unit;        
+    uint32_t maxPoints; 
+    uint32_t points_num;   
+    uint16_t block_num;
+    uint16_t laser_num;
+    int packet_index;   
+    bool scan_complete;    // when this packet is the last packet in one frame, this value should be true               
+    uint8_t reflectivities[kMaxPointsNumPerPacket];
+    uint16_t distances[kMaxPointsNumPerPacket];
+    float azimuth[kMaxPointsNumPerPacket];
+    float elevation[kMaxPointsNumPerPacket];
+    uint16_t azimuths;
+    uint16_t spin_speed;
+    uint8_t lidar_state;
+    uint8_t work_mode;
+    uint16_t use_timestamp_type;
+    LidarDecodeConfig config;
+    bool IsDecodedPacketValid() {
+      return block_num != 0;
+    }
+};
+
+template <typename PointT>
 class LidarDecodedFrame
 {
     public:
