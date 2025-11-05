@@ -57,6 +57,7 @@ namespace hesai
 namespace lidar
 {
 
+#ifndef DEFINE_MEMBER_CHECKER
 #define DEFINE_MEMBER_CHECKER(member)                                                                                  \
   template <typename T, typename V = bool>                                                                             \
   struct has_##member : std::false_type                                                                                \
@@ -68,6 +69,13 @@ namespace lidar
       : std::true_type                                                                                                 \
   {                                                                                                                    \
   };
+#endif
+
+#ifndef PANDAR_HAS_MEMBER
+#define PANDAR_HAS_MEMBER(C, member) has_##member<C>::value
+#endif
+
+#ifndef DEFINE_SET_GET
 #define PANDAR_HAS_MEMBER(C, member) has_##member<C>::value
 DEFINE_MEMBER_CHECKER(x)
 DEFINE_MEMBER_CHECKER(y)
@@ -75,6 +83,7 @@ DEFINE_MEMBER_CHECKER(z)
 DEFINE_MEMBER_CHECKER(intensity)
 DEFINE_MEMBER_CHECKER(ring)
 DEFINE_MEMBER_CHECKER(timestamp)
+#endif
 
 template <typename T_Point>
 inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, x)>::type setX(T_Point& point, const float& value)

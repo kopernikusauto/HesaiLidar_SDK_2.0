@@ -38,6 +38,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <iostream>
 #include <iomanip>
 #include "udp_protocol_v1_4.h"
+#include "general_parser.h"
 namespace hesai
 {
 namespace lidar
@@ -47,19 +48,11 @@ namespace lidar
 #define M_PI (3.14159265358979323846)
 #endif
 
-#define DEFINE_MEMBER_CHECKER(member)                                                                                  \
-  template <typename T, typename V = bool>                                                                             \
-  struct has_##member : std::false_type                                                                                \
-  {                                                                                                                    \
-  };                                                                                                                   \
-  template <typename T>                                                                                                \
-  struct has_##member<                                                                                                 \
-      T, typename std::enable_if<!std::is_same<decltype(std::declval<T>().member), void>::value, bool>::type>          \
-      : std::true_type                                                                                                 \
-  {                                                                                                                    \
-  };
+#ifndef PANDAR_HAS_MEMBER
 #define PANDAR_HAS_MEMBER(C, member) has_##member<C>::value
+#endif
 
+#ifndef DEFINE_SET_GET
 #define DEFINE_SET_GET(member, Type)                                                                                   \
   template <typename T_Point>                                                                                          \
   inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, member)>::type set_##member(T_Point& point, const Type& value) \
@@ -78,16 +71,10 @@ namespace lidar
   inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, member)>::type get_##member(T_Point& point, Type& value)  \
   {                                                                                                                    \
       value = point.member;                                                                                            \
-  }  
+  }
+#endif
 
-DEFINE_MEMBER_CHECKER(x)
-DEFINE_MEMBER_CHECKER(y)
-DEFINE_MEMBER_CHECKER(z)
-DEFINE_MEMBER_CHECKER(intensity)
-DEFINE_MEMBER_CHECKER(ring)
-DEFINE_MEMBER_CHECKER(timestamp)
 DEFINE_MEMBER_CHECKER(weightFactor)
-
 DEFINE_SET_GET(x, float)  
 DEFINE_SET_GET(y, float)  
 DEFINE_SET_GET(z, float)  

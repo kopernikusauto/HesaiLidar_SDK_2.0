@@ -50,6 +50,8 @@ namespace hesai
 {
 namespace lidar
 {
+//max point num of one packet, laser_num * block_num <= kMaxPointsNumPerPacket
+static constexpr uint16_t kMaxPointsNumPerPacket = 512;
 //max packet num of one frame, it means the capacity of frame buffer
 static constexpr uint16_t kMaxPacketNumPerFrame = 5000;
 //half of the max value in degrees, 1 LSB represents 0.01 degree, float type
