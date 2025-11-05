@@ -47,6 +47,13 @@ enum SourceType
   DATA_FROM_SERIAL = 4,
 };
 
+enum PtcMode
+{
+  tcp = 0,
+  tcp_ssl
+};
+
+
 enum UseTimestampType
 {
   point_cloud_timestamp = 0,
