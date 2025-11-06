@@ -92,6 +92,9 @@ typedef struct DecoderParam
   float frame_start_azimuth = 0;
   // 0 use point cloud timestamp
   // 1 use sdk receive timestamp
+  // enable the udp packet loss detection tool
+  // it forbiddens parser udp packet while trun on this tool
+  bool enable_packet_loss_tool = false;
   uint16_t use_timestamp_type = point_cloud_timestamp;
   int fov_start = -1;
   int fov_end = -1;
