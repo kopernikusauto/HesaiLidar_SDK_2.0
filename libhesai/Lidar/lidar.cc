@@ -107,6 +107,9 @@ int Lidar<T_Point>::Init(const DriverParam& param) {
                                                   , 1
                                                   , 2000
                                                   , 2000);
+      if (!ptc_client_->IsOpen()) {
+        ptc_client_->TryOpen();
+      }
     }
     init_finish_[FaultMessParse] = true;
     LogDebug("finish 0: The basic initialisation is complete");
