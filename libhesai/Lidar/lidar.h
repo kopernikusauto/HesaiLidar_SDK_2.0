@@ -42,10 +42,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "blocking_ring.h"
 #include "blocking_ptr_ring.h"
 #include "ring.h"
-// #include "driver_param.h"
 #include "socket_source.h"
 #include "ptc_client.h"
 #include "pcap_saver.h"
+#include "Version.h"
 #ifndef _MSC_VER
 #include <endian.h>
 #include <semaphore.h>

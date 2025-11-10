@@ -75,15 +75,12 @@ namespace lidar
 #define PANDAR_HAS_MEMBER(C, member) has_##member<C>::value
 #endif
 
-#ifndef DEFINE_SET_GET
-#define PANDAR_HAS_MEMBER(C, member) has_##member<C>::value
 DEFINE_MEMBER_CHECKER(x)
 DEFINE_MEMBER_CHECKER(y)
 DEFINE_MEMBER_CHECKER(z)
 DEFINE_MEMBER_CHECKER(intensity)
 DEFINE_MEMBER_CHECKER(ring)
 DEFINE_MEMBER_CHECKER(timestamp)
-#endif
 
 template <typename T_Point>
 inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, x)>::type setX(T_Point& point, const float& value)

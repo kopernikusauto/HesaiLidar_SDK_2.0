@@ -159,7 +159,7 @@ typedef struct DriverParam
   ///< The frame id of LiDAR message    
   std::string frame_id = "hesai";
   ///< Lidar type
-  std::string lidar_type = "AT128";
+  std::string lidar_type = "";
   bool use_gpu = false;
   uint8_t log_level = LOG_INFO | LOG_WARNING | LOG_ERROR | LOG_FATAL; //
   uint8_t log_Target = LOG_TARGET_CONSOLE | LOG_TARGET_FILE;

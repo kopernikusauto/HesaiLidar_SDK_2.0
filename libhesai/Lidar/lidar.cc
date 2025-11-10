@@ -30,7 +30,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "lidar.h"
 #include <inttypes.h>
 #include <stdio.h>
-#include "Version.h"
 #include <chrono>
 using namespace hesai::lidar;
 

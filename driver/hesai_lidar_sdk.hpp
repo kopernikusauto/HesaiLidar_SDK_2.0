@@ -55,9 +55,15 @@ public:
   SourceType source_type_;
   HesaiLidarSdk() {
 #ifdef USE_CUDA
-    std::cout << "-------- Hesai Lidar SDK Gpu V" << 2 << "." << 2 << "." << 2 << " --------" << std::endl;
+    std::cout << "-------- Hesai Lidar SDK Gpu V" << HESAI_VERSION_MAJOR << "."
+                                                  << HESAI_VERSION_MINOR << "."
+                                                  << HESAI_VERSION_TINY
+                                                  << " --------" << std::endl;
 #else
-    std::cout << "-------- Hesai Lidar SDK V" << 2 << "." << 2 << "." << 2 << " --------" << std::endl;
+    std::cout << "-------- Hesai Lidar SDK V" << HESAI_VERSION_MAJOR << "."
+                                              << HESAI_VERSION_MINOR << "."
+                                              << HESAI_VERSION_TINY
+                                              << " --------" << std::endl;
 #endif
     runing_thread_ptr_ = nullptr;
     lidar_ptr_ = nullptr;

@@ -44,13 +44,6 @@ namespace hesai
 namespace lidar
 {
 #define DEFAULT_MAX_LASER_NUM (128)
-#ifndef M_PI
-#define M_PI (3.14159265358979323846)
-#endif
-
-#ifndef PANDAR_HAS_MEMBER
-#define PANDAR_HAS_MEMBER(C, member) has_##member<C>::value
-#endif
 
 #ifndef DEFINE_SET_GET
 #define DEFINE_SET_GET(member, Type)                                                                                   \
