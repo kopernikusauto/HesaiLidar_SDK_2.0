@@ -93,17 +93,18 @@ struct LidarPointXYZIRT
     float x; 
     float y;             
     float z;
-    float intensity  
+    float intensity;
     uint16_t ring;
     double timestamp;
 };
+
 
 struct LidarPointXYZI
 {
     float x; 
     float y;             
     float z;             
-    float intensity     
+    float intensity;     
 };
 
 struct LidarPointXYZICRT
@@ -111,7 +112,7 @@ struct LidarPointXYZICRT
     float x; 
     float y;             
     float z;             
-    float intensity  
+    float intensity;  
     uint8_t confidence;  
     uint16_t ring;
     double timestamp;  
@@ -123,7 +124,7 @@ struct LidarPointXYZAIW
     float y;             
     float z;             
     float azimuthCalib;
-    float intensity     
+    float intensity;     
     uint8_t weightFactor;
 };
 
