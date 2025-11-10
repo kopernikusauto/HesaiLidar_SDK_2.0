@@ -88,23 +88,22 @@ static constexpr int kMaxTimeInterval = 250000;
 
 static constexpr int CIRCLE = (360 * kAllFineResolutionFloat);
 
-#pragma pack(push, 1)
+struct LidarPointXYZIRT
+{
+    float x; 
+    float y;             
+    float z;
+    float intensity  
+    uint16_t ring;
+    double timestamp;
+};
+
 struct LidarPointXYZI
 {
     float x; 
     float y;             
     float z;             
-    uint8_t intensity;     
-};
-
-struct LidarPointXYZIRT
-{
-    float x; 
-    float y;             
-    float z;             
-    uint8_t intensity;  
-    uint16_t ring;
-    double timestamp;  
+    float intensity     
 };
 
 struct LidarPointXYZICRT
@@ -112,7 +111,7 @@ struct LidarPointXYZICRT
     float x; 
     float y;             
     float z;             
-    uint8_t intensity;  
+    float intensity  
     uint8_t confidence;  
     uint16_t ring;
     double timestamp;  
@@ -124,7 +123,7 @@ struct LidarPointXYZAIW
     float y;             
     float z;             
     float azimuthCalib;
-    uint8_t intensity;     
+    float intensity     
     uint8_t weightFactor;
 };
 
@@ -257,7 +256,6 @@ struct FrameDecodeParam {
     use_cuda = param.use_gpu;
   }
 };
-#pragma pack(pop)
 
 template <typename PointT>
 struct LidarDecodedPacket
