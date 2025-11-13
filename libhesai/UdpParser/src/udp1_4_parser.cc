@@ -162,7 +162,7 @@ int Udp1_4Parser<T_Point>::LoadCorrectionString(const char *correction_content, 
     }
 
     for (int i = 0; i < lineCount; ++i) {
-      this->correction.elevation[i] = elevation_list[i];
+      this->correction.elevation[i] = elevation_list[i] + 0.7;
       this->correction.azimuth[i] = azimuth_list[i];
       correction.int_azimuth[i] = doubleToInt(correction.azimuth[i] * kAllFineResolutionFloat);
       correction.int_elevation[i] = doubleToInt(correction.elevation[i] * kAllFineResolutionFloat);
