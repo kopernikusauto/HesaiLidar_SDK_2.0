@@ -417,7 +417,7 @@ int Udp4_7Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32
       GeneralParser<T_Point>::DoRemake(azimuth, elevation, frame.fParam.remake_config, point_index_rerank); 
       if(point_index_rerank >= 0) { 
         auto& ptinfo = frame.points[point_index_rerank]; 
-        set_x(ptinfo, x); 
+        setX(ptinfo, x); 
         set_y(ptinfo, y); 
         set_z(ptinfo, z); 
         set_ring(ptinfo, channel_index); 

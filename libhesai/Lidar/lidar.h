@@ -43,7 +43,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "socket_source.h"
 #include "blocking_ring.h"
 #include "ring.h"
-#include "driver_param.h"
 #include "serial_source.h"
 #include "serial_client.h"
 #include "tcp_source.h"
@@ -150,11 +149,11 @@ public:
   LidarDecodedFrame<T_Point> frame_;
   u8Array_t correction_string_;
   BlockingRing<UdpPacket, kPacketBufferSize> origin_packets_buffer_;
+  std::shared_ptr<Source> source_;
+  std::shared_ptr<UdpParser<T_Point>> udp_parser_;
 private:
   bool init_finish_[TotalStatus];           // 0: 基本初始化完成， 1：ptc初始化完成， 2：角度校准文件加载完成， 3：全部初始化完成
-  std::shared_ptr<UdpParser<T_Point>> udp_parser_;
   std::shared_ptr<PcapSaver> pcap_saver_;
-  std::shared_ptr<Source> source_;
   std::shared_ptr<Source> source_fault_message_;
   std::shared_ptr<Source> source_rs232_;
   std::shared_ptr<SerialClient> serial_client_;

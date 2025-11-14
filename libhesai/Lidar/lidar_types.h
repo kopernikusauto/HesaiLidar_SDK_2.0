@@ -37,11 +37,14 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <string.h>
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <cmath>
 #include "inner_com.h"
+#include "driver_param.h"
 #define CHANNEL_NUM 256
 #define PACKET_NUM 3600
 namespace hesai
@@ -89,6 +92,36 @@ typedef struct LidarPointRTHI
     int intensity;         
 } LidarPointRTHI;
 
+struct LidarImuData {
+  double timestamp; 
+  double imu_accel_x;
+  double imu_accel_y;
+  double imu_accel_z;
+  double imu_ang_vel_x;
+  double imu_ang_vel_y;
+  double imu_ang_vel_z;
+  bool flag;
+  LidarImuData() {
+    flag = false;
+    timestamp = 0;
+    imu_accel_x = 0;
+    imu_accel_y = 0;
+    imu_accel_z = 1;
+    imu_ang_vel_x = -1;
+    imu_ang_vel_y = -1;
+    imu_ang_vel_z = -1;
+  }
+
+  bool isSameImuValue(const LidarImuData& other) const {
+    return imu_accel_x == other.imu_accel_x &&
+           imu_accel_y == other.imu_accel_y &&
+           imu_accel_z == other.imu_accel_z &&
+           imu_ang_vel_x == other.imu_ang_vel_x &&
+           imu_ang_vel_y == other.imu_ang_vel_y &&
+           imu_ang_vel_z == other.imu_ang_vel_z;
+  }
+};
+
 template <typename PointT>
 struct LidarDecodedPacket
 {
@@ -117,116 +150,358 @@ struct LidarDecodedPacket
     }
 };
 
+struct FrameDecodeParam {
+  bool pcap_time_synchronization; 
+  bool firetimes_flag;
+  bool dcf_flag;
+  bool distance_correction_flag;
+  bool xt_spot_correction;
+  bool update_function_safety_flag;
+  bool enable_packet_loss_tool_;
+  bool enable_packet_timeloss_tool_;
+  bool packet_timeloss_tool_continue_;
+  bool dirty_mapping_reflectance;
+  uint8_t use_timestamp_type;  // 0: point cloud time, other: local time
+  uint8_t echo_mode_filter;
+  LidarDecodeConfig config;
+  TransformParam transform;
+  int rotation_flag;
+  RemakeConfig remake_config;
+  bool et_blooming_filter_flag;
+  bool use_cuda;
+  float frame_frequency;
+  float default_frame_frequency;
+
+  FrameDecodeParam() {
+    use_timestamp_type = 0;
+    pcap_time_synchronization = false;
+    firetimes_flag = false;
+    dcf_flag = false;
+    distance_correction_flag = false;
+    xt_spot_correction = false;
+    update_function_safety_flag = false;
+    echo_mode_filter = 0;
+    rotation_flag = 0;
+    enable_packet_loss_tool_ = false;
+    enable_packet_timeloss_tool_ = false;
+    packet_timeloss_tool_continue_ = false;
+    dirty_mapping_reflectance = false;
+    et_blooming_filter_flag = false;
+    use_cuda = false;
+    frame_frequency = -1;
+    default_frame_frequency = DEFAULT_MAX_MULTI_FRAME_NUM;
+  }
+  void UpdateRotation(int rotation) {
+    if (abs(rotation_flag) == 10240) return;
+    if (abs(rotation_flag) > 128 * 8) rotation_flag /= 128;
+    rotation_flag += rotation;
+  }
+  void Init(const DriverParam& param) {
+    use_timestamp_type = param.decoder_param.use_timestamp_type;
+    pcap_time_synchronization = param.decoder_param.pcap_play_synchronization;
+    firetimes_flag = true;
+    dcf_flag = true;
+    distance_correction_flag = param.decoder_param.distance_correction_flag;
+    xt_spot_correction = param.decoder_param.xt_spot_correction;
+    config.fov_start = param.decoder_param.fov_start;
+    config.fov_end = param.decoder_param.fov_end;
+    transform = param.decoder_param.transform_param;
+    enable_packet_loss_tool_ = param.decoder_param.enable_packet_loss_tool;
+    enable_packet_timeloss_tool_ = param.decoder_param.enable_packet_timeloss_tool;
+    packet_timeloss_tool_continue_ = param.decoder_param.packet_timeloss_tool_continue;
+    remake_config = param.decoder_param.remake_config;
+    et_blooming_filter_flag = param.decoder_param.et_blooming_filter_flag;
+    use_cuda = param.use_gpu;
+    update_function_safety_flag = param.decoder_param.update_function_safety_flag;
+    echo_mode_filter = param.decoder_param.echo_mode_filter;
+    ParseChannelFovFilterPath(std::string(param.decoder_param.channel_fov_filter_path),
+                              config.channel_fov_filter);
+    ParseMultiFovFilterRanges(std::string(param.decoder_param.multi_fov_filter_ranges), config.multi_fov_filter_ranges);
+    frame_frequency = param.decoder_param.frame_frequency;
+    default_frame_frequency = param.decoder_param.default_frame_frequency;
+    if (default_frame_frequency == 0) {
+      default_frame_frequency = DEFAULT_MAX_MULTI_FRAME_NUM;
+      LogError("default_frame_frequency cannot be 0, reset to %f\n", default_frame_frequency);
+    }
+  }
+
+  int ParseChannelFovFilterPath(std::string file, std::map<int, std::vector<std::pair<int, int>>>& channel_fov_filter) {
+    if (file == "") return -1;
+    if (!std::ifstream(file).good()) {
+      LogError("channel fov file does not exist: %s", file.c_str());
+      return -1;
+    }
+    std::ifstream infile(file);
+    if (!infile.is_open()) {
+      LogError("Failed to open channel fov filter file: %s", file.c_str());
+      return -1;
+    }
+
+    std::string line;
+    while (std::getline(infile, line)) {
+      if (line.empty() || line[0] == '#') continue; // Skip empty lines or comments
+
+      size_t colon_pos = line.find(':');
+      if (colon_pos == std::string::npos) continue;
+
+      int channel = std::stoi(line.substr(0, colon_pos));
+      std::string ranges_str = line.substr(colon_pos + 1);
+
+      std::vector<std::pair<int, int>> ranges;
+      size_t start = 0;
+      size_t end = ranges_str.find(';');
+
+      while (end != std::string::npos) {
+        std::string range_part = ranges_str.substr(start, end - start);
+        size_t bracket_open = range_part.find('[');
+        size_t comma = range_part.find(',');
+        size_t bracket_close = range_part.find(']');
+
+        if (bracket_open != std::string::npos && comma != std::string::npos && bracket_close != std::string::npos) {
+          int low = std::stoi(range_part.substr(bracket_open + 1, comma - bracket_open - 1));
+          int high = std::stoi(range_part.substr(comma + 1, bracket_close - comma - 1));
+          ranges.emplace_back(low, high);
+        }
+
+        start = end + 1;
+        end = ranges_str.find(';', start);
+      }
+
+      // Handle last range
+      std::string range_part = ranges_str.substr(start);
+      size_t bracket_open = range_part.find('[');
+      size_t comma = range_part.find(',');
+      size_t bracket_close = range_part.find(']');
+
+      if (bracket_open != std::string::npos && comma != std::string::npos && bracket_close != std::string::npos) {
+        int low = std::stoi(range_part.substr(bracket_open + 1, comma - bracket_open - 1));
+        int high = std::stoi(range_part.substr(comma + 1, bracket_close - comma - 1));
+        ranges.emplace_back(low, high);
+      }
+
+      channel_fov_filter[channel] = ranges;
+    }
+
+    infile.close();
+    //遍历打印channel_fov_filter
+    for (const auto& entry : channel_fov_filter) {
+      int channel = entry.first;
+      const std::vector<std::pair<int, int>>& ranges = entry.second;
+
+      std::string channel_info = "Channel: " + std::to_string(channel) + ", Ranges: ";
+      for (const auto& range : ranges) {
+          channel_info += "[" + std::to_string(range.first) + ", " + std::to_string(range.second) + "] ";
+      }
+      LogInfo(channel_info.c_str());
+    }
+    return 0;
+  }
+  int ParseMultiFovFilterRanges(std::string ranges_str, std::vector<std::pair<int, int>>& ranges) {
+    if (ranges_str == "") return -1;
+    size_t start = 0;
+    size_t end = ranges_str.find(';');
+
+    while (end != std::string::npos) {
+      std::string range_part = ranges_str.substr(start, end - start);
+      size_t bracket_open = range_part.find('[');
+      size_t comma = range_part.find(',');
+      size_t bracket_close = range_part.find(']');
+
+      if (bracket_open != std::string::npos && comma != std::string::npos && bracket_close != std::string::npos) {
+        int low = std::stoi(range_part.substr(bracket_open + 1, comma - bracket_open - 1));
+        int high = std::stoi(range_part.substr(comma + 1, bracket_close - comma - 1));
+        ranges.emplace_back(low, high);
+      }
+
+      start = end + 1;
+      end = ranges_str.find(';', start);
+    }
+
+    // Handle last range
+    std::string range_part = ranges_str.substr(start);
+    size_t bracket_open = range_part.find('[');
+    size_t comma = range_part.find(',');
+    size_t bracket_close = range_part.find(']');
+
+    if (bracket_open != std::string::npos && comma != std::string::npos && bracket_close != std::string::npos) {
+      int low = std::stoi(range_part.substr(bracket_open + 1, comma - bracket_open - 1));
+      int high = std::stoi(range_part.substr(comma + 1, bracket_close - comma - 1));
+      ranges.emplace_back(low, high);
+    }
+    
+    std::string ranges_info = "";
+    //遍历打印channel_fov_filter
+    for (const auto& range : ranges) {
+      ranges_info += "[" + std::to_string(range.first) + ", " + std::to_string(range.second) + "] ";
+    }
+    LogInfo(ranges_info.c_str());
+    
+    return 0;
+  }
+  int IsMultiFrameFrequency() const { 
+    if (frame_frequency > 0 && frame_frequency < default_frame_frequency) {
+      if (fmodf(default_frame_frequency, frame_frequency) <= 0.0000001) {
+        return 1;
+      } else {
+        LogWarning("default_frame_frequency %lf is not a multiple of %lf, please check", default_frame_frequency, frame_frequency);
+        return 0;
+      }
+    } else {
+      return 0;
+    }
+  }
+};
+
 template <typename PointT>
 class LidarDecodedFrame
 {
     public:
-    LidarDecodedFrame() {
-        points_num = 0;
-        packet_index = 0;
-        distance_unit = 0.0;
-        total_memory = new uint8_t[sizeof(PointT) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + 
-                                   sizeof(uint64_t) * kMaxPacketNumPerFrame + sizeof(uint16_t) * kMaxPacketNumPerFrame +
-                                   sizeof(float) * 2 * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket +
-                                   sizeof(uint16_t) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + 
-                                   sizeof(uint8_t) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket
-                                  ];
-        int offset = 0;
-        points = reinterpret_cast <PointT* >(total_memory + offset);
-        offset = sizeof(PointT) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + offset;
-        sensor_timestamp = reinterpret_cast<uint64_t* >(total_memory + offset);
-        offset = sizeof(uint64_t) * kMaxPacketNumPerFrame + offset;
-        azimuths = reinterpret_cast<uint16_t* >(total_memory + offset);
-        offset = sizeof(uint16_t) * kMaxPacketNumPerFrame + offset;
-        azimuth = reinterpret_cast<float* >(total_memory + offset);
-        offset = sizeof(float) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + offset;
-        elevation = reinterpret_cast<float* >(total_memory + offset);
-        offset = sizeof(float) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + offset;
-        distances = reinterpret_cast<uint16_t* >(total_memory + offset);
-        offset = sizeof(uint16_t) * kMaxPacketNumPerFrame * kMaxPointsNumPerPacket + offset;
-        reflectivities = reinterpret_cast<uint8_t* >(total_memory + offset);
-
-        host_timestamp = 0;
-        major_version = 0;
-        minor_version = 0;
-        return_mode = 0;
-        spin_speed = 0;
-        points_num = 0;
+    LidarDecodedFrame(uint16_t maxPacketNum = 5000, uint16_t maxNumPerPacket = 1024) {
+        resetMalloc(maxPacketNum, maxNumPerPacket);
+        lidar_state = -1;
+        work_mode = -1;
         packet_num = 0;
+        frame_index = 0;
         block_num = 0;
         laser_num = 0; 
-        packet_index = 0;
+        channel_num = 0;
+        per_points_num = 0;
+        distance_unit = 0.0;
+        return_mode = 0;
+        points_num = 0;
+        frame_start_timestamp = 0;
+        frame_end_timestamp = 0;
         scan_complete = false;
-        distance_unit = 0;
-        frame_index = 0;
+        multi_packet_num = 0;
+        multi_points_num = 0;
     };
     ~LidarDecodedFrame() {
-        // delete points;
-        // points = nullptr;
-        // delete sensor_timestamp;
-        // sensor_timestamp = nullptr;
-        // delete azimuths;
-        // azimuths = nullptr;
-        // delete distances;
-        // distances = nullptr;
-        // delete reflectivities;
-        // reflectivities = nullptr;
-        // delete azimuth;
-        // azimuth = nullptr;
-        // delete elevation;
-        // elevation = nullptr;
         if (total_memory) {
-          delete total_memory;
-          total_memory = nullptr;
-          sensor_timestamp = nullptr;
-          points = nullptr;
-          azimuths = nullptr;
-          reflectivities = nullptr;
-          azimuth = nullptr;
-          elevation = nullptr;
-          distances = nullptr;
+            delete[] total_memory;
+            total_memory = nullptr;
+            packetData = nullptr;
+            points = nullptr;
+            funcSafety = nullptr;
+        }
+        if (valid_points) {
+          delete[] valid_points;
+          valid_points = nullptr;
+        }
+        if (point_cloud_raw_data) {
+          delete[] point_cloud_raw_data;
+          point_cloud_raw_data = nullptr;
+        }
+        if (multi_frame_buffer) {
+          delete[] multi_frame_buffer;
+          multi_frame_buffer = nullptr;
+          multi_points = nullptr;
         }
     }
-    void Update(){
-      host_timestamp = 0;
-      major_version = 0;
-      minor_version = 0;
-      return_mode = 0;
-      spin_speed = 0;
-      points_num = 0;
-      packet_num = 0;
-      block_num = 0;
-      laser_num = 0; 
-      packet_index = 0;
-      scan_complete = false;
-      distance_unit = 0;
-      lidar_state = (uint8_t)(-1);
-      work_mode = (uint8_t)(-1);
-      frame_index++;
+    void resetMalloc(uint16_t maxPacketNum, uint16_t maxNumPerPacket) {
+      maxPacketPerFrame = maxPacketNum;
+      maxPointPerPacket = maxNumPerPacket;
+      if (total_memory) {
+          delete[] total_memory;
+          total_memory = nullptr;
+          packetData = nullptr;
+          points = nullptr;
+          funcSafety = nullptr;
+      }
+      if (valid_points) {
+        delete[] valid_points;
+      }
+      total_memory = new uint8_t[sizeof(PacketDecodeData) * maxPacketPerFrame
+                                   + sizeof(PointT) * maxPacketPerFrame * maxPointPerPacket
+                                   + sizeof(FunctionSafety) * maxPacketPerFrame];
+      memset(total_memory, 0, sizeof(PacketDecodeData) * maxPacketPerFrame
+                                   + sizeof(PointT) * maxPacketPerFrame * maxPointPerPacket
+                                   + sizeof(FunctionSafety) * maxPacketPerFrame);
+      uint32_t offset = 0;
+      packetData = reinterpret_cast<PacketDecodeData* >(total_memory + offset);
+      offset += (sizeof(PacketDecodeData) * maxPacketPerFrame);
+      points = reinterpret_cast <PointT* >(total_memory + offset);
+      offset += (sizeof(PointT) * maxPacketPerFrame * maxPointPerPacket);
+      funcSafety = reinterpret_cast <FunctionSafety* >(total_memory + offset);
+      offset += (sizeof(FunctionSafety) * maxPacketPerFrame);
+      valid_points = new uint32_t[maxPacketPerFrame];
+      if (fParam.IsMultiFrameFrequency() == 1) {
+        multi_rate = fParam.default_frame_frequency / fParam.frame_frequency;
+        int multi_num = multi_rate + 1;
+        multi_frame_buffer = new uint8_t[sizeof(PointT) * maxPacketPerFrame * maxPointPerPacket * multi_num];
+        multi_points = reinterpret_cast <PointT* >(multi_frame_buffer);
+        LogInfo("fParam.frame_frequency: %lf, multi_rate : %d", fParam.frame_frequency, multi_rate);
+      }
     }
-    uint64_t host_timestamp;   
-    uint64_t* sensor_timestamp = nullptr; 
-    uint8_t major_version;
-    uint8_t minor_version;
+    LidarDecodedFrame(const LidarDecodedFrame&) = delete;
+    LidarDecodedFrame& operator=(const LidarDecodedFrame&) = delete;
+    void Update() {
+        packet_num = 0;
+        points_num = 0;
+        frame_start_timestamp = 0;
+        frame_end_timestamp = 0;
+        scan_complete = false;
+        frame_index++;
+        std::fill(et_echo_vec.begin(), et_echo_vec.end(), false);
+    }
+    void clearFuncSafety() {
+      memset(funcSafety, 0, sizeof(FunctionSafety) * maxPacketPerFrame);
+    }
+    uint32_t getPointSize() const {
+      return sizeof(PointT);
+    }
+    void MultiFrameUpdate() {
+      multi_packet_num = 0;
+      multi_points_num = 0;
+      multi_frame_start_timestamp = 0;
+      multi_frame_end_timestamp = 0;
+      multi_frame_index++;
+    }
+    uint8_t* total_memory = nullptr; 
+    uint32_t maxPacketPerFrame;
+    uint32_t maxPointPerPacket;
+    // configure
+    FrameDecodeParam fParam;
+
+    // frame parameter
+    int16_t lidar_state;
+    int16_t work_mode;
     uint16_t return_mode;
-    uint16_t spin_speed;        
-    uint32_t points_num; 
-    uint32_t packet_num;
-    uint8_t* total_memory = nullptr;                  
-    PointT* points = nullptr;
-    uint16_t* azimuths = nullptr;
-    uint8_t* reflectivities = nullptr;
-    float* azimuth = nullptr;
-    float* elevation = nullptr;
-    uint16_t* distances = nullptr;
-    uint16_t block_num;
-    uint16_t laser_num;
-    uint16_t packet_index;
-    bool scan_complete;
-    double distance_unit;
+    uint32_t packet_num; 
+    uint32_t* valid_points = nullptr;
     int frame_index;
-    uint8_t lidar_state;
-    uint8_t work_mode;
+    uint32_t points_num;
+    double frame_start_timestamp;
+    double frame_end_timestamp;
+    std::string software_version = "xx.xx.xx";
+    std::string hardware_version = "xx.xx.xx";
+    // package parameter
+    PacketDecodeData* packetData = nullptr; 
+    FunctionSafety* funcSafety = nullptr;
+    uint16_t block_num;
+    uint16_t laser_num;  // channel number in point cloud
+    uint16_t channel_num; // real channel number, when != 0, mean useful channel number
+    uint32_t per_points_num; 
+    uint8_t reserved[4];
+    double distance_unit;
+    bool scan_complete;
+    // point parameter
+    PointT* points = nullptr;
+    //special output
+    LidarImuData imu_config;
+    // point cloud raw data
+    bool frame_init_ = false;
+    uint32_t point_cloud_size = 0;
+    uint8_t* point_cloud_raw_data = nullptr;
+    std::vector<bool> et_echo_vec;
+    bool clear_every_frame = false;
+    uint8_t *multi_frame_buffer = nullptr;
+    PointT* multi_points = nullptr;
+    uint32_t multi_packet_num = 0;
+    uint32_t multi_points_num = 0;
+    double multi_frame_start_timestamp = 0;
+    double multi_frame_end_timestamp = 0;
+    int multi_frame_index = 0;
+    int multi_rate = 1;
 };
 
 typedef std::vector<uint8_t> u8Array_t;
@@ -284,13 +559,6 @@ enum TDMDataIndicate {
   kUndefineIndicate = -1,
 };
 
-enum LensDirtyState {
-  kUndefineData = -1,
-  kLensNormal = 0,
-  kPassable = 1,
-  kUnPassable = 3,
-};
-
 enum HeatingState {
   kOff = 0,
   kHeating = 1,
@@ -304,35 +572,6 @@ enum HighTempertureShutdownState {
   kShutdownMode2 = 6,
   kShutdownMode2Fail = 10,
   kUndefineShutdownData = -1,
-};
-
-struct FaultMessageInfo {
-  uint8_t version;
-  uint8_t utc_time[6];
-  uint32_t timestamp;
-  double total_time;
-  LidarOperateState operate_state;
-  LidarFaultState fault_state;
-  FaultCodeType faultcode_type;
-  uint8_t rolling_counter;
-  uint8_t total_faultcode_num;
-  uint8_t faultcode_id;
-  uint32_t faultcode;
-  int dtc_num;
-  DTCState dtc_state;
-  TDMDataIndicate tdm_data_indicate;
-  double temperature;
-  LensDirtyState lens_dirty_state[LENS_AZIMUTH_AREA_NUM]
-                                 [LENS_ELEVATION_AREA_NUM];
-  uint16_t software_id;
-  uint16_t software_version;
-  uint16_t hardware_version;
-  uint16_t bt_version;
-  HeatingState heating_state;
-  HighTempertureShutdownState high_temperture_shutdown_state;
-  uint8_t reversed[3];
-  uint32_t crc;
-  uint8_t cycber_security[32];
 };
 
 }  // namespace lidar

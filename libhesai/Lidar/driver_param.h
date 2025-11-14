@@ -26,7 +26,8 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF TH
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
-#pragma once
+#ifndef DRIVER_PARAM_H
+#define DRIVER_PARAM_H
 #include "logger.h"
 #include "inner_com.h"
 #include <string>
@@ -80,12 +81,24 @@ typedef struct DecoderParam
   // enable the udp packet loss detection tool
   // it forbiddens parser udp packet while trun on this tool
   bool enable_packet_loss_tool = false;
+  bool enable_packet_timeloss_tool = false;
+  bool packet_timeloss_tool_continue = false;
   // 0 use point cloud timestamp
   // 1 use sdk receive timestamp
   uint16_t use_timestamp_type = point_cloud_timestamp;
   int fov_start = -1;
   int fov_end = -1;
+  bool distance_correction_flag = false;
+  bool xt_spot_correction = false;
+  bool et_blooming_filter_flag = false;
+  RemakeConfig remake_config;
   uint32_t socket_buffer_size = 0;
+  char channel_fov_filter_path[512] = "";  // correction/config/channel_fov_filter.txt
+  char multi_fov_filter_ranges[512] = "";  // multiple fov filter ranges, for all channels
+  float frame_frequency = 0;
+  float default_frame_frequency = DEFAULT_MAX_MULTI_FRAME_NUM;
+  bool update_function_safety_flag = false;
+  uint16_t echo_mode_filter = 0;
 } DecoderParam;
 
 ///< The LiDAR input parameter
@@ -100,6 +113,9 @@ typedef struct InputParam
   std::string multicast_ip_address = "";
   ///< Address of host
   std::string host_ip_address = "Your host ip";
+  ///< port filter
+  uint16_t device_udp_src_port = 0;
+  uint16_t device_fault_port = 0;
   ///< udp packet port number
   uint16_t udp_port = 2368;
   uint16_t fault_message_port = 0;
@@ -138,6 +154,7 @@ typedef struct InputParam
 
   bool send_packet_ros;
   bool send_point_cloud_ros;
+  bool send_imu_ros;
   std::string frame_id;
 
   std::string ros_send_packet_topic = NULL_TOPIC;
@@ -146,6 +163,7 @@ typedef struct InputParam
   std::string ros_send_ptp_topic = NULL_TOPIC;
   std::string ros_send_correction_topic = NULL_TOPIC;
   std::string ros_send_firetime_topic = NULL_TOPIC;
+  std::string ros_send_imu_topic = NULL_TOPIC;
 
   std::string ros_recv_correction_topic = NULL_TOPIC;
   std::string ros_recv_packet_topic = NULL_TOPIC;
@@ -162,6 +180,7 @@ typedef struct DriverParam
   DecoderParam decoder_param;
   ///< The frame id of LiDAR message
   std::string frame_id = "hesai";
+  bool use_gpu = false;
   ///< Lidar type
   std::string lidar_type = "AT128";
   int log_level = LOG_DEBUG | LOG_INFO; //
@@ -170,3 +189,5 @@ typedef struct DriverParam
 } DriverParam;
 }  // namespace lidar
 }  // namespace hesai
+
+#endif // DRIVER_PARAM_H

@@ -37,7 +37,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <vector>
 #include "tcp_client.h"
-#include "driver_param.h"
+#include "lidar_types.h"
 #include "ptc_parser.h"
 #include "byte_printer.h"
 #ifdef WITH_PTCS_USE

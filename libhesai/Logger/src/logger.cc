@@ -74,7 +74,7 @@ void Logger::Stop()
     spthread_->join();  
 }  
   
-void Logger::AddToQueue(LOGLEVEL loglevel, const char* pszFile, int lineNo, const char* pszFuncSig, char* pszFmt, ...)  
+void Logger::AddToQueue(LOGLEVEL loglevel, const char* pszFile, int lineNo, const char* pszFuncSig, const char* pszFmt, ...)  
 { 
 	
 	if ((loglevel & log_level_rule_) != loglevel) return;
