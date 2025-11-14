@@ -28,6 +28,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 #include "logger.h"
+#include "inner_com.h"
 #include <string>
 namespace hesai
 {
@@ -41,6 +42,8 @@ enum SourceType
   DATA_FROM_LIDAR = 1,
   DATA_FROM_PCAP = 2,
   DATA_FROM_ROS_PACKET = 3,
+  DATA_FROM_SERIAL = 4,
+  DATA_FROM_LIDAR_TCP = 5,
 };
 
 enum PtcMode
@@ -54,23 +57,6 @@ enum UseTimestampType
   point_cloud_timestamp = 0,
   sdk_recv_timestamp = 1,
 };
-
-///< The Point transform parameter
-typedef struct TransformParam
-{
-  ///< unit, m
-  float x = 0.0f;
-  ///< unit, m
-  float y = 0.0f;
-  ///< unit, m
-  float z = 0.0f;
-  ///< unit, radian
-  float roll = 0.0f;
-  ///< unit, radian
-  float pitch = 0.0f;
-  ///< unit, radian
-  float yaw = 0.0f;
-} TransformParam;
 
 ///< LiDAR decoder parameter
 typedef struct DecoderParam
@@ -86,6 +72,8 @@ typedef struct DecoderParam
   bool enable_udp_thread = true;
   bool enable_parser_thread = true;
   bool pcap_play_synchronization = true;
+  float play_rate_ = 1.0;
+  bool pcap_play_in_loop = false;
   //start a new frame when lidar azimuth greater than frame_start_azimuth
   //range:[0-360), set frame_start_azimuth less than 0 if you do want to use it
   float frame_start_azimuth = 1;
@@ -97,6 +85,7 @@ typedef struct DecoderParam
   uint16_t use_timestamp_type = point_cloud_timestamp;
   int fov_start = -1;
   int fov_end = -1;
+  uint32_t socket_buffer_size = 0;
 } DecoderParam;
 
 ///< The LiDAR input parameter
@@ -113,13 +102,26 @@ typedef struct InputParam
   std::string host_ip_address = "Your host ip";
   ///< udp packet port number
   uint16_t udp_port = 2368;
+  uint16_t fault_message_port = 0;
   ///< ptc packet port number
   uint16_t ptc_port = 9347;
+  bool use_ptc_connected = true;   
+  uint16_t host_ptc_port = 0;  // 0 is not used
+  // tcp port
+  uint16_t device_tcp_src_port = 5120;
+  ///< serial port and baudrate
+  std::string rs485_com = "/dev/ttyUSB0";
+  std::string rs232_com = "/dev/ttyUSB1";
+  int point_cloud_baudrate = 3125000;
+  int rs485_baudrate = 115200;   
+  int rs232_baudrate = 9600;
   bool read_pcap = true;          ///< true: The driver will process the pcap through pcap_path. false: The driver will
                                    ///< Get data from online LiDAR
   std::string pcap_path = "Your pcap file path";  ///< Absolute path of pcap file
   std::string correction_file_path = "Your correction file path";   ///< Path of angle calibration files(angle.csv).Only used for internal debugging.
   std::string firetimes_path = "Your firetime file path";  ///< Path of firetime files(angle.csv).
+  std::string dcf_file_path = "Your dcf file path";
+  std::string correction_save_path = "";
   /// certFile          Represents the path of the user's certificate
   const char* certFile = nullptr;
   /// privateKeyFile    Represents the path of the user's private key
@@ -130,6 +132,9 @@ typedef struct InputParam
   int standby_mode = -1;
   /// speed             set the rotational speed of lidar
   int speed = -1;
+  // timeout
+  float recv_point_cloud_timeout = -1; //(s), <0 : not timeout 
+  float ptc_connect_timeout = -1; //(s), <0 : not timeout 
 
   bool send_packet_ros;
   bool send_point_cloud_ros;

@@ -27,46 +27,43 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
 /*
- * File:       udp1_4_parser.h
- * Author:     Zhang Yu <zhangyu@hesaitech.com>
- * Description: Declare Udp1_4Parser class
+ * File:       udp1_8_parser.h
+ * Author:     Chang XingShuo <changxingshuo@hesaitech.com>
+ * Description: Declare Udp1_8Parser class
 */
 
-#ifndef UDP1_4_PARSER_H_
-#define UDP1_4_PARSER_H_
+#ifndef UDP1_8_PARSER_H_
+#define UDP1_8_PARSER_H_
 
 #include "general_parser.h"
-#include "udp_protocol_v1_4.h"
+#include "udp_protocol_v1_8.h"
 namespace hesai
 {
 namespace lidar
 {
-
-// class Udp1_4Parser
-// parsers packets and computes points for PandarN E3X、OT128
+// class Udp1_8Parser
+// parsers packets and computes points for JT16
 template<typename T_Point>
-class Udp1_4Parser : public GeneralParser<T_Point> {
+class Udp1_8Parser : public GeneralParser<T_Point> {
  public:
-  Udp1_4Parser(std::string);
-  virtual ~Udp1_4Parser();
+  Udp1_8Parser();
+  virtual ~Udp1_8Parser();
 
   virtual int DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket, const int packet_index = -1);    
   virtual int ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32_t packet_index);
 
   virtual void LoadFiretimesFile(const std::string& firetimes_path);
+  virtual void LoadCorrectionFile(const std::string& correction_path);
   virtual int LoadCorrectionString(const char *correction_string, int len);
-  // compute lidar firetime correciton
-  double GetFiretimesCorrection(int laserId, double speed, uint8_t optMode, uint8_t angleState, float dist);
+  int LoadCorrectionCsvData(char *correction_string, int len);
   // get the pointer to the struct of the parsed correction file or firetimes file
   virtual void* getStruct(const int type);
   virtual void setFrameRightMemorySpace(LidarDecodedFrame<T_Point> &frame);
  private:
-  int GetFiretimes(int laserId, uint8_t optMode, uint8_t angleState, float dist);
-  pandarN::FiretimesPandarN firetimes;
 };
 }  // namespace lidar
 }  // namespace hesai
 
-#include "udp1_4_parser.cc"
+#include "udp1_8_parser.cc"
 
-#endif  // UDP1_4_PARSER_H_
+#endif  // UDP1_8_PARSER_H_

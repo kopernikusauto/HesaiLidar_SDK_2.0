@@ -41,6 +41,9 @@ namespace lidar
 #define PACKED __attribute__((packed))
 #endif
 
+#define STR_XTM1 "XTM1"
+#define STR_XTM2 "XTM2"
+
 struct HsLidarXTV1BodyAzimuth {
     uint16_t m_u16Azimuth;
 

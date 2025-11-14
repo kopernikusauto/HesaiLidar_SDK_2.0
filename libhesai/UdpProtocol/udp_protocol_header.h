@@ -43,28 +43,28 @@ namespace lidar
 #define PACKED __attribute__((packed))
 #endif
 
-static bool IsLittleEndian() {
-  const int a = 1;
-  const unsigned char *p = reinterpret_cast<const unsigned char *>(&a);
+// static bool IsLittleEndian() {
+//   const int a = 1;
+//   const unsigned char *p = reinterpret_cast<const unsigned char *>(&a);
 
-  return *p == 1 ? true : false;
-}
+//   return *p == 1 ? true : false;
+// }
 
-template <typename T>
-T little_to_native(T data) {
-  T out = 0;
-  if (IsLittleEndian()) {
-    out = data;
-  } else {
-    unsigned char *pSrc = reinterpret_cast<unsigned char *>(&data +
-                                                            sizeof(data) - 1),
-                  *pDst = reinterpret_cast<unsigned char *>(&out);
-    for (size_t i = 0; i < sizeof(data); i++) {
-      *pDst++ = *pSrc--;
-    }
-  }
-  return out;
-}
+// template <typename T>
+// T little_to_native(T data) {
+//   T out = 0;
+//   if (IsLittleEndian()) {
+//     out = data;
+//   } else {
+//     unsigned char *pSrc = reinterpret_cast<unsigned char *>(&data +
+//                                                             sizeof(data) - 1),
+//                   *pDst = reinterpret_cast<unsigned char *>(&out);
+//     for (size_t i = 0; i < sizeof(data); i++) {
+//       *pDst++ = *pSrc--;
+//     }
+//   }
+//   return out;
+// }
 
 struct HS_LIDAR_PRE_HEADER {
   static const uint16_t kDelimiter = 0xffee;
@@ -140,6 +140,16 @@ struct ReservedInfo3 {
   uint8_t GetID() const { return m_u8ID; }
   uint16_t GetData() const { return little_to_native(m_u16Sts); }
 } PACKED;
+
+inline bool hasSeqNum(uint8_t status) { return status & 1; }
+inline bool hasImu(uint8_t status) { return status & 2; }
+inline bool hasFunctionSafety(uint8_t status) { return status & 4; }
+inline bool hasSignature(uint8_t status) { return status & 8; }
+inline bool hasConfidence(uint8_t status) { return status & 0x10; }
+inline bool hasWeightFactor(uint8_t status) { return status & 0x20; }
+inline bool hasEnvLight(uint8_t status) { return status & 0x40; }
+inline bool hasSlope(uint8_t status) { return status & 0x20; }
+inline bool hasSelfDefine(uint8_t status) { return status & 0x40; }
 
 #ifdef _MSC_VER
 #pragma pack(pop)

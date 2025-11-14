@@ -27,56 +27,99 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
 /*
- * File:   source.h
+ * File:   tcp_client.h
  * Author: Felix Zou<zouke@hesaitech.com>
  *
  * Created on Sep 5, 2019, 10:46 AM
  */
 
-#ifndef STREAMER_H
-#define STREAMER_H
-
-#include <stdint.h>
-#include <string>
-#include <lidar_types.h>
+#ifndef TCPSOURCE_H
+#define TCPSOURCE_H
 
 #ifdef _MSC_VER
 #include <winsock2.h>
 #include <ws2tcpip.h> 
-#pragma comment(lib, "ws2_32.lib")  // Winsock Library
-typedef int socklen_t;
 #else
-#include <arpa/inet.h>
-#include <errno.h>
-#include <netinet/ip.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
 typedef unsigned int SOCKET;
-#define INVALID_SOCKET -1
-#define SOCKET_ERROR -1
 #endif
+#include "source.h"
+#include <stdint.h>
+#include <string.h>
+#include <atomic>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+#include "blocking_ring.h"
 namespace hesai
 {
 namespace lidar
 {
-class Source {
+class TcpSource : public Source {
  public:
-  // the flag of pcap end
-  bool is_pcap_end = false;
-  Source();
-  virtual ~Source();
-  virtual bool Open() = 0;
+  TcpSource(std::string IPAddr, uint16_t port, float timeout);
+  virtual ~TcpSource();
+
+  TcpSource(const TcpSource &orig) = delete;
+
+  virtual bool Open();
   virtual void Close();
-  virtual bool IsOpened() = 0;
-  virtual int Send(uint8_t* u8Buf, uint16_t u16Len, int flags = 0) = 0;
+  virtual bool IsOpened();
+  bool IsOpened(bool bExpectation);
+  virtual int Send(uint8_t *u8Buf, uint16_t u16Len, int flags = 0);
   virtual int Receive(UdpPacket& udpPacket, uint16_t u16Len, int flags = 0,
-                      int timeout = 1000) = 0; 
-  virtual void SetSocketBufferSize(uint32_t u32BufSize) = 0;
-  virtual void SetReceiveStype(int type) {}    
-  virtual void SetPcapLoop(bool) {}
-  virtual void setNeedRecv(bool) {}            
+                      int timeout = 1000);
+
+  /**
+   * @brief 设置接收超时
+   * @param u32Timeout 超时时间/ms
+   * @return
+   */
+  bool SetReceiveTimeout(uint32_t u32Timeout);
+
+  /**
+   * @brief 设置收发超时
+   * @param u32RecMillisecond 接收超时/ms
+   * @param u32SendMillisecond 发送超时/ms
+   * @return
+   */
+  int SetTimeout(uint32_t u32RecMillisecond, uint32_t u32SendMillisecond);
+
+  /**
+   * @brief 设置自动接收模式下Buff的大小
+   * @param size
+   */
+  virtual void SetSocketBufferSize(uint32_t u32BufSize);
+
+ private:
+  /**
+   * monitor file descriptor and wait for I/O operation
+   */
+  int WaitFor(const int &socketfd, uint32_t timeoutSeconds = 1);
+
+ protected:
+  static const int kDataMaxLength = kBufSize * 100;
+  void ReceivedThread();
+  bool running = false;
+  std::thread* runningRecvThreadPtr;
+  static const uint32_t kDefaultTimeout = 500;
+  uint8_t m_receiveBuffer[kDataMaxLength]; 
+  int is_hav_recv_len = -1;
+  BlockingRing<UdpPacket, kPacketBufferSize> pointCloudRecvBuf;
+  int dataIndex;
+  int dataLength;
+
+  std::string m_sServerIP;
+  uint16_t ptc_port_;
+  SOCKET m_tcpSock;
+  bool m_bLidarConnected;
+  uint32_t m_u32ReceiveBufferSize;
+  // 收发超时/ms
+  uint32_t m_u32RecTimeout = kDefaultTimeout;
+  uint32_t m_u32SendTimeout = kDefaultTimeout;
+  float timeout_ = 3;
 };
-}  // namespace lidar
-}  // namespace hesai
-#endif /* STREAMER_H */
+}
+}
+#endif /* TCPSOURCE_H */

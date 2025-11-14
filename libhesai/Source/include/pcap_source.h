@@ -164,6 +164,7 @@ private:
     TCP pcap_tcp_header_;
     std::array<uint8_t, 1500> payload_;
     int packet_interval_;
+    bool is_loop = false;
 public:
     PcapSource(std::string path, int packet_interval);
     PcapSource(const PcapSource&) = delete;
@@ -190,6 +191,10 @@ public:
     int distinationPort();
     void setPacketInterval(int microsecond);
     virtual void SetSocketBufferSize(uint32_t u32BufSize) {};
+    virtual void SetPcapLoop(bool loop) { is_loop = loop; };
+    inline uint16_t convert_endian_16(uint16_t value);
+    inline uint32_t convert_endian_32(uint32_t value);
+    uint64_t getPacketTimestamp(const PcapRecord& record);
 };
 }  // namespace lidar
 }  // namespace hesai

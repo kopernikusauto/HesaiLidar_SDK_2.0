@@ -26,47 +26,69 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF TH
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
-/*
- * File:       udp1_4_parser.h
- * Author:     Zhang Yu <zhangyu@hesaitech.com>
- * Description: Declare Udp1_4Parser class
-*/
+#ifndef AUTOTIMER_H_
+#define AUTOTIMER_H_
 
-#ifndef UDP1_4_PARSER_H_
-#define UDP1_4_PARSER_H_
-
-#include "general_parser.h"
-#include "udp_protocol_v1_4.h"
+#include <map>
+#include <numeric>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <cstdint>
 namespace hesai
 {
 namespace lidar
 {
+class AutoTickCount;
 
-// class Udp1_4Parser
-// parsers packets and computes points for PandarN E3X、OT128
-template<typename T_Point>
-class Udp1_4Parser : public GeneralParser<T_Point> {
+class TickCount {
  public:
-  Udp1_4Parser(std::string);
-  virtual ~Udp1_4Parser();
+  TickCount();
+  ~TickCount();
 
-  virtual int DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket, const int packet_index = -1);    
-  virtual int ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32_t packet_index);
+  int Start();
+  int Pause();
+  std::string GetTimeCost(uint64_t &u64TimeCost);
+  std::string GetTimeCost();
+  int ShowTimeSlice(std::string sLogFile = "", bool bSaveSysTime = false);
+  std::map<std::string, std::vector<uint64_t>> GetTimeSlice() {
+    return m_timeSlice;
+  }
+  uint64_t GetTimeSlice(std::string sKey, int nTime = -1);
+  int Begin(std::string sKey);
+  int End(std::string sKey, bool bShow = true);
+  int SetName(std::string sName) {
+    m_sName = sName;
 
-  virtual void LoadFiretimesFile(const std::string& firetimes_path);
-  virtual int LoadCorrectionString(const char *correction_string, int len);
-  // compute lidar firetime correciton
-  double GetFiretimesCorrection(int laserId, double speed, uint8_t optMode, uint8_t angleState, float dist);
-  // get the pointer to the struct of the parsed correction file or firetimes file
-  virtual void* getStruct(const int type);
-  virtual void setFrameRightMemorySpace(LidarDecodedFrame<T_Point> &frame);
+    return 0;
+  }
+
  private:
-  int GetFiretimes(int laserId, uint8_t optMode, uint8_t angleState, float dist);
-  pandarN::FiretimesPandarN firetimes;
+  static const uint32_t kMicroToSec = 1000000;
+  static const uint8_t kClockUnit = 60;
+  uint64_t m_u64StartTime;
+  uint64_t m_u64EndTime;
+  std::map<std::string, std::vector<uint64_t>> m_timeSlice;
+  std::map<std::string, uint64_t> m_startTime;
+  std::string m_sName;
+
+  friend class AutoTickCount;
+
+  int AppentTimeSlice(std::string sKey, uint64_t u64Time);
+};
+
+class AutoTickCount {
+ public:
+  AutoTickCount(TickCount &t, std::string sKey = "", bool bShow = true);
+  ~AutoTickCount();
+
+ private:
+  TickCount *m_pT;
+  uint64_t m_u64StartTime;
+  uint64_t m_u64EndTime;
+  bool m_bShow;
+  std::string m_sKey;
 };
 }  // namespace lidar
 }  // namespace hesai
-
-#include "udp1_4_parser.cc"
-
-#endif  // UDP1_4_PARSER_H_
+#endif  // AUTOTIMER_H_

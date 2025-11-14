@@ -11,50 +11,66 @@
   *Neither the names of the University of Texas at Austin,nor Austin Robot Technology,nor the names of 
    other contributors maybe used to endorse or promote products derived from this software without 
    specific prior written permission.
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGH THOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
   WARRANTIES,INCLUDING,BUT NOT LIMITED TO,THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
   PARTICULAR PURPOSE ARE DISCLAIMED.IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR 
   ANY DIRECT,INDIRECT,INCIDENTAL,SPECIAL,EXEMPLARY,OR CONSEQUENTIAL DAMAGES(INCLUDING,BUT NOT LIMITED TO,
   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;LOSS OF USE,DATA,OR PROFITS;OR BUSINESS INTERRUPTION)HOWEVER 
   CAUSED AND ON ANY THEORY OF LIABILITY,WHETHER IN CONTRACT,STRICT LIABILITY,OR TORT(INCLUDING NEGLIGENCE 
   OR OTHERWISE)ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,EVEN IF ADVISED OF THE POSSIBILITY OF 
-  SUCHDAMAGE.
+  SUCH DAMAGE.
 ************************************************************************************************/
 
 /*
- * File:       general_parser.cc
- * Author:     Zhang Xu <int_zhangxu@hesaitech.com>
+ * File:       byte_parser.h
+ * Author:     Jinghuan Xie <int_jinghuanxie@hesaitech.com>
+ * Description: print bytes in uint8_t
  */
 
-#include "general_ptc_parser.h"
-#include "ptc_client.h"
-using namespace hesai::lidar;
+#ifndef BYTE_PRINTER_H_
+#define BYTE_PRINTER_H_
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include "lidar_types.h"
 
-GeneralPtcParser::~GeneralPtcParser(){}
+class BytePrinter {
+private:
+  BytePrinter() {} // 私有化构造函数，防止外部实例化
 
-// 对文件数据划分成包，并且对每一个包进行数据帧的封装
-// 对需要分成多个包的payload进行split和封装成包
-bool GeneralPtcParser::SplitFileFrames(const u8Array_t &file, uint8_t u8Cmd, std::vector<u8Array_t>& packages) {
-  // const int FRAME_LENGTH = 1024; 
-  // int file_length = file.size();
-  std::vector<u8Array_t> frames;
-  // split file -> frames
-  // int pos = 0;
-  // while(file_length > 0) {
-    // u8Array_t tmp = u8Array_t(pos, pos + min(FRAME_LENGTH, file_length));
-    // frames.push_back(tmp);
-    // pos += FRAME_LENGTH;
-    // file_length -= FRAME_LENGTH;
-  // }
-  // 对frame进行封装成包
-  for(auto &frame : frames) {
-    u8Array_t cur;
-    bool f = PtcStreamEncode(frame, cur, u8Cmd);
-    if(!f) {
-      std::cout << "GeneralPtcParser::PtcFilestreamSend pack frame failed!" << std::endl;
-      return false;
-    }
-    packages.push_back(cur);
+public:
+  static BytePrinter& getInstance() {
+    static BytePrinter instance; // 单例模式，静态局部变量确保只创建一次
+    return instance;
   }
-  return true;
-}
+
+  template <typename T>
+  void printByte(const T &byte) {
+    std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(byte);
+  }
+
+  void printByteArray(const hesai::lidar::u8Array_t &bytes) {
+    for (const auto &byte : bytes) {
+      std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(byte) << ' ';
+    }
+    std::cout << '\n';
+  }
+
+  template <typename T>
+  std::string printByteToString(const T &byte) {
+    std::ostringstream oss;
+    oss << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(byte);
+    return oss.str();
+  }
+
+  std::string printByteArrayToString(const hesai::lidar::u8Array_t &bytes) {
+    std::ostringstream oss;
+    for (const auto &byte : bytes) {
+      oss << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(byte) << ' ';
+    }
+    return oss.str();
+  }
+};
+
+#endif

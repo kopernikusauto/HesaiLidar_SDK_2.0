@@ -23,17 +23,23 @@ add_library(HesaiLidar
 target_include_directories(HesaiLidar PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Lidar>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/SerialClient/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/SerialClient/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpProtocol>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpParser/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpParser/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Container/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Container/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Common/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Common/src>
 
     $<INSTALL_INTERFACE:include>
     $<INSTALL_INTERFACE:include/Lidar>
     $<INSTALL_INTERFACE:include/UdpProtocol>
     $<INSTALL_INTERFACE:include/UdpParser>
     $<INSTALL_INTERFACE:include/Container>
+    $<INSTALL_INTERFACE:include/SerialClient>
+    $<INSTALL_INTERFACE:include/Common>
 )
 set_target_properties(HesaiLidar PROPERTIES CXX_STANDARD_REQUIRED TRUE CXX_STANDARD 17)
 file(GLOB_RECURSE _container_headers
@@ -43,6 +49,14 @@ file(GLOB_RECURSE _container_headers
 file(GLOB_RECURSE _udpprotocol_headers
     UdpProtocol/*.h
 )
+file(GLOB_RECURSE _serialclient_headers
+    SerialClient/*.h
+)
+
+file(GLOB_RECURSE _common_headers
+    Common/*.h
+)
+
 file(GLOB_RECURSE _udpparser_headers
     UdpParser/include/*.h
     UdpParser/src/*.cc
@@ -141,6 +155,18 @@ install(
     FILES
     ${_udpprotocol_headers}
     DESTINATION include/UdpProtocol
+)
+
+install(
+    FILES
+    ${_serialclient_headers}
+    DESTINATION include/SerialClient
+)
+
+install(
+    FILES
+    ${_common_headers}
+    DESTINATION include/Common
 )
 
 install(

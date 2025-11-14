@@ -43,6 +43,12 @@ namespace lidar
 #define PACKED __attribute__((packed))
 #endif
 
+#define P40_BLOCKNUM 10
+#define P40_LASERNUM 40
+#define PKT_SIZE_40P (1262)
+#define PKT_SIZE_AC (1256)
+#define P40_DISTANCEUNIT 0.004
+
 struct HS_LIDAR_BODY_CHN_UNIT_L40 {
   uint16_t m_u16Distance;
   uint8_t m_u8Reflectivity;

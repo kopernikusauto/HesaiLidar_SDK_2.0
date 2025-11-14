@@ -26,47 +26,44 @@ TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF TH
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 
-/*
- * File:       udp1_4_parser.h
- * Author:     Zhang Yu <zhangyu@hesaitech.com>
- * Description: Declare Udp1_4Parser class
-*/
-
-#ifndef UDP1_4_PARSER_H_
-#define UDP1_4_PARSER_H_
+#ifndef UDP4_7_PARSER_H_
+#define UDP4_7_PARSER_H_
 
 #include "general_parser.h"
-#include "udp_protocol_v1_4.h"
+#include "udp_protocol_v4_7.h"
 namespace hesai
 {
 namespace lidar
 {
-
-// class Udp1_4Parser
-// parsers packets and computes points for PandarN E3X、OT128
+// class Udp4_7Parser
+// parsers packets and computes points for ATX
 template<typename T_Point>
-class Udp1_4Parser : public GeneralParser<T_Point> {
- public:
-  Udp1_4Parser(std::string);
-  virtual ~Udp1_4Parser();
-
+class Udp4_7Parser : public GeneralParser<T_Point> {
+public:
+  Udp4_7Parser();
+  virtual ~Udp4_7Parser();     
   virtual int DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket, const int packet_index = -1);    
-  virtual int ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32_t packet_index);
-
-  virtual void LoadFiretimesFile(const std::string& firetimes_path);
+  virtual int ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32_t packet_index);   
+  // get lidar correction file from local file,and pass to udp parser    
+  virtual void LoadCorrectionFile(const std::string& correction_path);
   virtual int LoadCorrectionString(const char *correction_string, int len);
-  // compute lidar firetime correciton
-  double GetFiretimesCorrection(int laserId, double speed, uint8_t optMode, uint8_t angleState, float dist);
+  virtual void LoadFiretimesFile(const std::string& firetimes_path);
+  virtual int LoadFiretimesString(const char *firetimes_string, int len);      
   // get the pointer to the struct of the parsed correction file or firetimes file
-  virtual void* getStruct(const int type);
+  virtual void* getStruct(const int type);     
+  // get display 
+  virtual int getDisplay(bool **);      
+
+  bool IsNeedFrameSplit(uint16_t frame_id);  
+  virtual int ParserFaultMessage(UdpPacket& udp_packet, FaultMessageInfo &fault_message_info);
   virtual void setFrameRightMemorySpace(LidarDecodedFrame<T_Point> &frame);
- private:
-  int GetFiretimes(int laserId, uint8_t optMode, uint8_t angleState, float dist);
-  pandarN::FiretimesPandarN firetimes;
+protected:
+  int last_frameid_ = -1;
+  ATX::ATXCorrections m_ATX_corrections;
+  ATX::ATXFiretimes m_ATX_firetimes;
 };
 }  // namespace lidar
 }  // namespace hesai
 
-#include "udp1_4_parser.cc"
-
-#endif  // UDP1_4_PARSER_H_
+#include "udp4_7_parser.cc"
+#endif // end of UDP4_7_PARSER_H_

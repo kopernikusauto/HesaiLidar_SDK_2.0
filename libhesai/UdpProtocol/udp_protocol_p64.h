@@ -43,6 +43,10 @@ namespace lidar
 #define PACKED __attribute__((packed))
 #endif
 
+#define PKT_SIZE_64_B6 (1194)
+#define PKT_SIZE_20_B7 (1388)
+#define P64_LASERNUM 64
+
 struct HS_LIDAR_L64_Header {
   // 0xFFEE 2bytes
   uint16_t m_u16Sob;

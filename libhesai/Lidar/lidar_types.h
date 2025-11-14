@@ -41,6 +41,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include "inner_com.h"
 #define CHANNEL_NUM 256
 #define PACKET_NUM 3600
 namespace hesai
@@ -54,39 +55,14 @@ static constexpr uint16_t kMaxPointsNumPerPacket = 512;
 static constexpr uint16_t kMaxPacketNumPerFrame = 4000;
 //max points num of one frame
 static constexpr uint32_t kMaxPointsNumPerFrame = kMaxPointsNumPerPacket * kMaxPacketNumPerFrame;
-//half of the max value in degrees, 1 LSB represents 0.01 degree, float type
-static constexpr float kHalfCircleFloat = 18000.0f;
-//half of the max value in degrees, 1 LSB represents 0.01 degree, int type
-static constexpr int kHalfCircleInt = 18000;
-//max value in degrees, 1 LSB represents 0.01 degree
-static constexpr int kCircle = 36000;
-//laser azimuth resolution, 100 units represents 1 degree, int type
-static constexpr int kResolutionInt = 100;
-//laser azimuth resolution, 100 units represents 1 degree, float type
-static constexpr float kResolutionFloat = 100.0f;
-//conversion factor between second and micorsecond
-static constexpr float kMicrosecondToSecond = 1000000.0f;
-static constexpr int kMicrosecondToSecondInt = 1000000;
 //the difference between last azimuth and current azimuth must be greater than this angle in split frame function,
 //to avoid split frame unsuccessfully
 static constexpr uint16_t kSplitFrameMinAngle = 300;
-//laser fine azimuth resolution, 1 LSB represents 0.01 / 256 degree, float type
-static constexpr float kFineResolutionFloat = 256.0f;
-//laser fine azimuth resolution, 1 LSB represents 0.01 / 256 degree, int type
-static constexpr int kFineResolutionInt = 256;
 //synchronize host time with sensor time per kPcapPlaySynchronizationCount packets
 static constexpr int kPcapPlaySynchronizationCount = 100;
 //min points of one frame for displaying frame message
-static constexpr int kMinPointsOfOneFrame = 1000;
-//max time interval between two frame
-static constexpr int kMaxTimeInterval = 150000;
 
-//length of fault message packet
-static constexpr int kFaultMessageLength = 99;
 
-static constexpr int kPacketBufferSize = 36000;
-//default udp data max lenth
-static const uint16_t kBufSize = 1500;
 typedef struct LidarPointXYZI
 {
     float x; 
@@ -112,17 +88,6 @@ typedef struct LidarPointRTHI
     int radius;            
     int intensity;         
 } LidarPointRTHI;
-
-typedef struct _LidarDecodeConfig {
-    int fov_start;
-    int fov_end;
-
-    _LidarDecodeConfig()
-    {
-      fov_start = -1;
-      fov_end = -1;
-    }
-} LidarDecodeConfig;
 
 template <typename PointT>
 struct LidarDecodedPacket
@@ -262,19 +227,6 @@ class LidarDecodedFrame
     int frame_index;
     uint8_t lidar_state;
     uint8_t work_mode;
-};
-
-
-struct UdpPacket {
-  uint8_t buffer[1500];
-  int16_t packet_len;
-  bool is_timeout = false;
-  uint64_t recv_timestamp;
-  UdpPacket(const uint8_t* data = nullptr, uint32_t sz = 0)
-  : packet_len(sz)
-  {
-      memcpy(buffer, data, packet_len);
-  }
 };
 
 typedef std::vector<uint8_t> u8Array_t;

@@ -36,6 +36,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define GENERAL_PARSER_H_
 #define CIRCLE (36000)
 #define MAX_LASER_NUM (512)
+#define DEFAULT_MAX_LASER_NUM (256)
+#define RETURN_MODE_MULTI (0x39)
+#define RETURN_MODE_MULTI_TRIPLE (0x3D)
+#define SOMEIP_OFFSET (21)
 #ifndef M_PI
 #define M_PI (3.14159265358979323846)
 #endif
@@ -57,21 +61,7 @@ namespace hesai
 namespace lidar
 {
 
-#define DEFINE_MEMBER_CHECKER(member)                                                                                  \
-  template <typename T, typename V = bool>                                                                             \
-  struct has_##member : std::false_type                                                                                \
-  {                                                                                                                    \
-  };                                                                                                                   \
-  template <typename T>                                                                                                \
-  struct has_##member<                                                                                                 \
-      T, typename std::enable_if<!std::is_same<decltype(std::declval<T>().member), void>::value, bool>::type>          \
-      : std::true_type                                                                                                 \
-  {                                                                                                                    \
-  };
 #define PANDAR_HAS_MEMBER(C, member) has_##member<C>::value
-DEFINE_MEMBER_CHECKER(x)
-DEFINE_MEMBER_CHECKER(y)
-DEFINE_MEMBER_CHECKER(z)
 DEFINE_MEMBER_CHECKER(intensity)
 DEFINE_MEMBER_CHECKER(ring)
 DEFINE_MEMBER_CHECKER(timestamp)
@@ -165,6 +155,25 @@ struct Transform {
   float yaw;
 };
 
+struct LastUtcTime {
+  uint64_t last_time = 0;
+  int16_t last_utc[6];
+  LastUtcTime() {
+    last_time = 0;
+    last_utc[0] = -1;
+    last_utc[1] = -1;
+    last_utc[2] = -1;
+    last_utc[3] = -1;
+    last_utc[4] = -1;
+    last_utc[5] = -1;
+  }
+};
+
+enum DistanceCorrectionType {
+  OpticalCenter,
+  GeometricCenter,
+};
+
 // class GeneralParser
 // the GenneralParser class is a base class for parsering packets and computing points
 // you can parser the upd or pcap packets using the DocodePacket fuction
@@ -249,6 +258,12 @@ class GeneralParser {
   Transform transform_;
   float frame_start_azimuth_;
 };
+
+enum StructType {
+  CORRECTION_STRUCT = 1,
+  FIRETIME_STRUCT = 2,
+};
+
 }
 }
 #include "general_parser.cc"

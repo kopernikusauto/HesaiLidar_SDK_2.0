@@ -3,49 +3,44 @@ Copyright (C) 2023 Hesai Technology Co., Ltd.
 Copyright (C) 2023 Original Authors
 All rights reserved.
 
-All code in this repository is released under the terms of the following Modified BSD License.
-Redistribution and use in source and binary forms, with or without modification, are permitted
+All code in this repository is released under the terms of the following Modified BSD License. 
+Redistribution and use in source and binary forms, with or without modification, are permitted 
 provided that the following conditions are met:
 
-* Redistributions of source code must retain the above copyright notice, this list of conditions and
+* Redistributions of source code must retain the above copyright notice, this list of conditions and 
   the following disclaimer.
 
-* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
+* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and 
   the following disclaimer in the documentation and/or other materials provided with the distribution.
 
-* Neither the name of the copyright holder nor the names of its contributors may be used to endorse or
+* Neither the name of the copyright holder nor the names of its contributors may be used to endorse or 
   promote products derived from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 #ifndef UDP_PARSER_H_
 #define UDP_PARSER_H_
 
-#include "lidar_types.h"
-#include "pcap_saver.h"
+#include <vector>
 #include "general_parser.h"
+#include "lidar_types.h"
+#include "udp_p40_parser.h"
+#include "udp_p64_parser.h"
 #include "udp1_4_parser.h"
-#include "udp2_4_parser.h"
-#include "udp2_5_parser.h"
+#include "udp1_8_parser.h"
 #include "udp3_1_parser.h"
 #include "udp3_2_parser.h"
 #include "udp4_3_parser.h"
+// #include "udp4_7_parser.h"
 #include "udp6_1_parser.h"
 #include "udp7_2_parser.h"
-#include "udp_p40_parser.h"
-#include "udp_p64_parser.h"
-#include <vector>
-#define PKT_SIZE_40P (1262)
-#define PKT_SIZE_AC (1256)
-#define PKT_SIZE_64 (1194)
-#define PKT_SIZE_20 (1270)
 namespace hesai
 {
 namespace lidar
@@ -53,63 +48,74 @@ namespace lidar
 // class UdpParser
 // the UdpParser class is an interface layer.it instantiates a specific udp parser class,
 // which is determined by lidar type.
-// UdpParser mainly parsers udp or pcap packets and computes xyzi of points
-// you can parser the upd or pcap packets using the DocodePacket fuction
-// you can compute xyzi of points using the ComputeXYZI fuction, which uses cpu to compute
+// UdpParser mainly parsers udp or pcap packets and computes xyzi of points 
+// you can parser the udp or pcap packets using the DecodePacket function
+// you can compute xyzi of points using the ComputeXYZI function, which uses cpu to compute
 template <typename T_Point>
 class UdpParser {
  public:
-  UdpParser(uint8_t major, uint8_t minor);
-  UdpParser(std::string lidar_type);
-  UdpParser(UdpPacket &packet);
+  explicit UdpParser(const std::string &lidar_type);
+  explicit UdpParser(const UdpPacket &packet);
   UdpParser();
   virtual ~UdpParser();
-  void CreatGeneralParser(uint8_t major, uint8_t minor);
-  void CreatGeneralParser(std::string lidar_type);
+  // set parser
+  void CreatGeneralParser(const std::string& lidar_type);
   void CreatGeneralParser(const UdpPacket& packet);
-  GeneralParser<T_Point> *GetGeneralParser();
-  void SetGeneralParser(GeneralParser<T_Point> *Parser);
-  PcapSaver *GetPcapSaver();
+  void SetGeneralParser(GeneralParser<T_Point> *parser) { parser_ = parser; }
+  // get parser
+  GeneralParser<T_Point> *GetGeneralParser() { return parser_; }
+  GeneralParser<T_Point> *GetParser() { return parser_; }
 
-  // get lidar correction file from local file,and pass to udp parser
-  void LoadCorrectionFile(std::string correction_path);  //从本地文件获取
-  int LoadCorrectionString(char *correction_string);  //从角度文件char*数据获取
-
-  // get lidar firetime correction file from local file,and pass to udp parser
-  void LoadFiretimesFile(std::string firetimes_path);
-  void EnableUpdateMonitorInfo();
-  void DisableUpdateMonitorInfo();
-  uint16_t *GetMonitorInfo1();
-  uint16_t *GetMonitorInfo2();
-  uint16_t *GetMonitorInfo3();
-
-  // covert a origin udp packet to decoded packet, the decode function is in UdpParser module
-  // udp_packet is the origin udp packet, output is the decoded packet
-  int DecodePacket(LidarDecodedPacket<T_Point> &output, const UdpPacket& udpPacket);
+  // load correction file, which is necessary for DecodePacket.
+  void LoadCorrectionFile(const std::string& correction_path);
+  int LoadCorrectionString(const char *correction_string, int len);
+  // load firetimes file
+  void LoadFiretimesFile(const std::string& firetimes_path);
+  int LoadFiretimesString(const char *firetimes_string, int len);
+  // load channel config file
+  int LoadChannelConfigFile(const std::string channel_config_path);
+  // load dcf config file
+  int LoadDcfConfigFile(const std::string& dcf_path);
+  int LoadDcfConfigString(const char *dcf_string, int len);
+  // get the pointer to the struct of the parsed correction file or firetimes file
+  void *getStruct(const int type) { if (parser_ != nullptr) return parser_->getStruct(type); else return nullptr; }
+  int getDisplay(bool **display) { if (parser_ != nullptr) return parser_->getDisplay(display); else return 0; }
+  // get/set correction/firetimes file loading flag
+  bool isSetCorrectionSucc() { if (parser_ != nullptr) return parser_->isSetCorrectionSucc(); else return false; }
+  bool isSetFiretimeSucc() { if (parser_ != nullptr) return parser_->isSetFiretimeSucc(); else return false; }
 
   // covert a origin udp packet to decoded data, and pass the decoded data to a frame struct to reduce memory copy
-  int DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket);
+  int DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket, const int packet_index = -1);  
+  // xyzi of points after computed is puted in frame  
+  int ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32_t packet_index);
+  // parse the detailed content of the fault message message
+  int ParserFaultMessage(UdpPacket& udp_packet, FaultMessageInfo &fault_message_info);
+  // get/clear the number of parsed packets
+  uint32_t GetComputePacketNum() { if (parser_ != nullptr) return parser_->GetComputePacketNum(); else return 0; }
+  void SetComputePacketNumToZero() { if (parser_ != nullptr) parser_->SetComputePacketNumToZero(); }
+  //
+  void setFrameRightMemorySpace(LidarDecodedFrame<T_Point> &frame) { if (parser_ != nullptr) parser_->setFrameRightMemorySpace(frame); }
 
-  // compute xyzi of points from decoded packet
-  // param packet is the decoded packet; xyzi of points after computed is puted in frame
-  int ComputeXYZI(LidarDecodedFrame<T_Point> &frame, LidarDecodedPacket<T_Point> &packet);
-
-  int GetGeneralParser(GeneralParser<T_Point> **parser);
-  int SetTransformPara(float x, float y, float z, float roll, float pitch, float yaw);
-  GeneralParser<T_Point>* GetParser() {return parser_;}
-  std::string GetLidarType() {return lidar_type_decoded_;}
-  void SetPcapPlay(bool pcap_time_synchronization, int source_type);
+  // set frame azimuth
   void SetFrameAzimuth(float frame_start_azimuth);
+  // set the parsing type
+  void SetPcapPlay(int source_type);
+  // fet the basic lidar model
+  std::string GetLidarType() {return lidar_type_decoded_;}
+  void SetPlayRate(float play_rate);
+  int FrameProcess(LidarDecodedFrame<T_Point> &frame) { if (parser_ != nullptr) return parser_->FrameProcess(frame); else return -1; }
+
+  
  private:
+  using timePoint = std::chrono::time_point<std::chrono::steady_clock>;
   GeneralParser<T_Point> *parser_;
-  PcapSaver *pcap_saver_;
   std::string lidar_type_decoded_;
-  bool fisrt_packet_;
-  uint64_t last_host_timestamp_;
-  uint64_t last_sensor_timestamp_;
-  uint8_t packet_count_;
-  bool pcap_time_synchronization_;
+  bool first_packet_;
+  timePoint last_host_timestamp_;
+  timePoint last_sensor_timestamp_;
   int source_type_;
+  bool printErrorBool;
+  float play_rate_ = 1.0;
 };
 }  // namespace lidar
 }  // namespace hesai
