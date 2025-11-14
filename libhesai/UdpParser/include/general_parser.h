@@ -64,6 +64,9 @@ namespace hesai
 namespace lidar
 {  
 
+DEFINE_MEMBER_CHECKER(x)
+DEFINE_MEMBER_CHECKER(y)
+DEFINE_MEMBER_CHECKER(z)
 DEFINE_MEMBER_CHECKER(intensity)
 DEFINE_MEMBER_CHECKER(ring)
 DEFINE_MEMBER_CHECKER(timestamp)
@@ -73,6 +76,9 @@ DEFINE_MEMBER_CHECKER(timeNanosecond)
 DEFINE_MEMBER_CHECKER(weightFactor)
 DEFINE_MEMBER_CHECKER(envLight)
 
+DEFINE_SET_GET(x, float)
+DEFINE_SET_GET(y, float)
+DEFINE_SET_GET(z, float)
 DEFINE_SET_GET(intensity, uint8_t)  
 DEFINE_SET_GET(ring, uint16_t)  
 DEFINE_SET_GET(timestamp, double)  
