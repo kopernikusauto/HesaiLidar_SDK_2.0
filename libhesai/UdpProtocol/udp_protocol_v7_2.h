@@ -33,13 +33,40 @@ namespace hesai
 {
 namespace lidar
 {
-
-#ifdef _MSC_VER
-#define PACKED
 #pragma pack(push, 1)
-#else
-#define PACKED __attribute__((packed))
-#endif
+  namespace FT {
+    static constexpr int FT2_CORRECTION_LEN = 512;
+    static constexpr int CHANNEL_MAX = 128;
+    static constexpr int COLUMN_MAX = 384;
+    static constexpr int HASH_BYTES_LENGTH = 64;
+    struct PandarFTCorrectionsHeader {
+      uint8_t pilot[2];
+      uint8_t version[2];
+      uint8_t reversed[2];
+    };
+    struct PandarFTCorrections {
+      PandarFTCorrectionsHeader header;
+      uint16_t column_number;
+      uint16_t channel_number;
+      uint8_t resolution;
+      int16_t angles[CHANNEL_MAX * COLUMN_MAX * 2];
+      int32_t angles_32[CHANNEL_MAX * COLUMN_MAX * 2];
+      float elevations[FT2_CORRECTION_LEN * FT2_CORRECTION_LEN];
+      float azimuths[FT2_CORRECTION_LEN * FT2_CORRECTION_LEN];
+      uint8_t hashValue[32];
+      bool display[FT2_CORRECTION_LEN * FT2_CORRECTION_LEN];
+      PandarFTCorrections() {
+        for (int i = 0; i < FT2_CORRECTION_LEN * FT2_CORRECTION_LEN; i++) {
+          display[i] = true;
+        }
+      }
+      void clear() {
+        memset(&header, 0, sizeof(PandarFTCorrectionsHeader));
+        memset(elevations, 0, sizeof(float) * FT2_CORRECTION_LEN * FT2_CORRECTION_LEN);
+        memset(azimuths, 0, sizeof(float) * FT2_CORRECTION_LEN * FT2_CORRECTION_LEN);
+      }
+    };
+  }
 
 struct HS_LIDAR_BODY_CHN_UNIT_FT_V2 {
   uint16_t distance;
@@ -50,13 +77,7 @@ struct HS_LIDAR_BODY_CHN_UNIT_FT_V2 {
   uint16_t GetDistance() const { return little_to_native(distance); }
   uint8_t GetReflectivity() const { return reflectivity; }
   uint8_t GetConfidenceLevel() const { return confidence; }
-
-  void Print() const {
-    printf("HS_LIDAR_BODY_CHN_UNIT_FT_V2:\n");
-    printf("Dist:%u, Reflectivity: %u, confidenceLevel:%d\n", GetDistance(),
-           GetReflectivity(), GetConfidenceLevel());
-  }
-} PACKED;
+};
 
 struct HS_LIDAR_TAIL_FT_V2 {
   // shutdown flag, bit 0
@@ -99,93 +120,30 @@ struct HS_LIDAR_TAIL_FT_V2 {
 
   uint32_t GetSeqNum() const { return little_to_native(sequence_num); }
 
-  void CalPktLoss(uint32_t &u32StartSeqNum, uint32_t &u32LastSeqNum, uint32_t &u32LossCount, 
-        uint32_t &u32StartTime, uint32_t &u32TotalLossCount, uint32_t &u32TotalStartSeqNum) const {
-    // bool print = false;
-    if (u32StartSeqNum == 0) {
-      u32LossCount = 0;
-      u32TotalLossCount = 0;
-      u32StartTime = GetMicroTickCount();
-      u32StartSeqNum = sequence_num;
-      u32LastSeqNum = sequence_num;
-      u32TotalStartSeqNum = sequence_num;
-      return;
-    }
-    if (sequence_num - u32LastSeqNum > 1) {
-      u32LossCount += (sequence_num - u32LastSeqNum - 1);
-      u32TotalLossCount += (sequence_num - u32LastSeqNum - 1);
-      // print = true;
-      // if (sequence_num - u32LastSeqNum - 1 > 1000)
-      // printf("%d,  %u, %u\n", sequence_num - u32LastSeqNum - 1, u32LastSeqNum,
-      // sequence_num);
-    }
-
-    // print log every 1s
-    if (u32LossCount != 0 && GetMicroTickCount() - u32StartTime >= 1 * 1000 * 1000) {
-      printf("pkt loss freq: %u/%u\n", u32LossCount,
-             sequence_num - u32StartSeqNum);
-      u32LossCount = 0;
-      u32StartTime = GetMicroTickCount();
-      u32StartSeqNum = sequence_num;
-    }
-
-    u32LastSeqNum = sequence_num;
-  }
-
-  // void CalPktLoss(uint32_t &u32StartSeqNum, uint32_t &u32LastSeqNum, uint32_t &u32LossCount, uint32_t &u32StartTime) const {
-  //   // bool print = false;
-  //   if (sequence_num - u32LastSeqNum > 1) {
-  //     u32LossCount += (sequence_num - u32LastSeqNum - 1);
-  //     // print = true;
-  //     // if (sequence_num - u32LastSeqNum - 1 > 1000)
-  //     // printf("%d,  %u, %u\n", sequence_num - u32LastSeqNum - 1, u32LastSeqNum,
-  //     // sequence_num);
-  //   }
-
-  //   // print log every 1s
-  //   if (GetMicroTickCount() - u32StartTime >= 1 * 1000 * 1000) {
-  //     printf("pkt loss freq: %u/%u\n", u32LossCount,
-  //            sequence_num - u32StartSeqNum);
-  //     u32LossCount = 0;
-  //     u32StartTime = GetMicroTickCount();
-  //     u32StartSeqNum = sequence_num;
-  //   }
-
-  //   u32LastSeqNum = sequence_num;
-  // }
-  static uint32_t GetSeqNumSize() { return sizeof(sequence_num); }
-
-
-  void CalPktLoss() const {
-    static uint32_t u32StartSeqNum = GetSeqNum();
-    static uint32_t u32LastSeqNum = GetSeqNum();
-    static uint32_t u32LossCount = 0;
-    static uint32_t u32StartTime = GetMicroTickCount();
-
-    if (GetSeqNum() - u32LastSeqNum - 1 > 0) {
-      u32LossCount += (GetSeqNum() - u32LastSeqNum - 1);
-    }
-
-    // print log every 10s
-    if (GetMicroTickCount() - u32StartTime >= 10 * 1000 * 1000) {
-      printf("pkt loss freq: %u/%u\n", u32LossCount, 
-          GetSeqNum() - u32StartSeqNum);
-      u32LossCount = 0;
-      u32StartTime = GetMicroTickCount();
-      u32StartSeqNum = GetSeqNum();
-    }
-
-    u32LastSeqNum = GetSeqNum();
-  }
-  int64_t GetMicroLidarTimeU64() const {
+  uint64_t GetMicroLidarTimeU64(LastUtcTime &last_utc_time) const {
     if (utc[0] != 0) {
+      if (last_utc_time.last_utc[0] == utc[0]
+          && last_utc_time.last_utc[1] == utc[1]
+          && last_utc_time.last_utc[2] == utc[2]
+          && last_utc_time.last_utc[3] == utc[3]
+          && last_utc_time.last_utc[4] == utc[4]
+          && last_utc_time.last_utc[5] == utc[5]) {
+        return last_utc_time.last_time + GetTimestamp();
+      }
+      last_utc_time.last_utc[0] = utc[0];
+      last_utc_time.last_utc[1] = utc[1];
+      last_utc_time.last_utc[2] = utc[2];
+      last_utc_time.last_utc[3] = utc[3];
+      last_utc_time.last_utc[4] = utc[4];
+      last_utc_time.last_utc[5] = utc[5];
+
 			struct tm t = {0};
-			t.tm_year = utc[0] + 100;
-			if (t.tm_year >= 200) {
-				t.tm_year -= 100;
-			}
+			t.tm_year = utc[0];
+			if (t.tm_year < 70) {
+        t.tm_year += 100;
+      }
 			t.tm_mon = utc[1] - 1;
-			t.tm_mday = utc[2];
+			t.tm_mday = utc[2] + 1;
 			t.tm_hour = utc[3];
 			t.tm_min = utc[4];
 			t.tm_sec = utc[5];
@@ -195,32 +153,17 @@ struct HS_LIDAR_TAIL_FT_V2 {
   GetTimeZoneInformation(&tzi);
   long int timezone =  tzi.Bias * 60;
 #endif
-			return (mktime(&t) - timezone) * 1000000 + GetTimestamp();
+      last_utc_time.last_time = (mktime(&t) - timezone - 86400) * 1000000;
+      return last_utc_time.last_time + GetTimestamp();
 		}
 		else {
       uint32_t utc_time_big = *(uint32_t*)(&utc[0] + 2);
-      int64_t unix_second = ((utc_time_big >> 24) & 0xff) |
-              ((utc_time_big >> 8) & 0xff00) |
-              ((utc_time_big << 8) & 0xff0000) |
-              ((utc_time_big << 24));
+      uint64_t unix_second = big_to_native(utc_time_big);
       return unix_second * 1000000 + GetTimestamp();
 		}
 
   }
-
-  void Print() const {
-    printf("HS_LIDAR_TAIL_FT_V2:\n");
-    printf(
-        "sts0:%d, data0:%d, sts1:%d, data1:%d, motorSpeed:%u, "
-        "timestamp:%u, return_mode:0x%02x, utc:%u %u "
-        "%u %u %u %u, seqNum: %u\n",
-        GetStsID0(), GetData0(), GetStsID1(), GetData1(),
-        GetMotorSpeed(), GetTimestamp(), GetReturnMode(),
-        GetUTCData(0), GetUTCData(1), GetUTCData(2), GetUTCData(3),
-        GetUTCData(4), GetUTCData(5), GetSeqNum());
-  }
-
-} PACKED;
+};
 
 struct HS_LIDAR_HEADER_FT_V2 {
   static const uint8_t kSequenceNum = 0x01;
@@ -239,7 +182,7 @@ struct HS_LIDAR_HEADER_FT_V2 {
   uint8_t reserved[8];
 
   uint16_t GetChannelNum() const { return channel_num; }
-  double GetDistUnit() const { return dist_unit / 1000.f; }
+  float GetDistUnit() const { return dist_unit / 1000.f; }
   uint8_t GetEchoCount() const { return echo; }
   bool IsFirstBlockLastReturn() const {
     return echo == kFirstBlockLastReturn;
@@ -247,32 +190,8 @@ struct HS_LIDAR_HEADER_FT_V2 {
   bool IsFirstBlockStrongestReturn() const {
     return echo == kFirstBlockStrongestReturn;
   }
-
-  // uint16_t GetPacketSize() const {
-  //   uint16_t u16TailDelta =
-  //       (HasSeqNum() ? 0 : HS_LIDAR_TAIL_FT_V2::GetSeqNumSize()) +
-  //       (HasIMU() ? 0 : HS_LIDAR_TAIL_FT_V2::GetIMUSize());
-
-  //   return sizeof(HS_LIDAR_PRE_HEADER) + sizeof(HS_LIDAR_HEADER_FT_V2) +
-  //          sizeof(HS_LIDAR_TAIL_FT_V2) +
-  //          (sizeof(HS_LIDAR_BODY_AZIMUTH_FT_V2) +
-  //           sizeof(HS_LIDAR_BODY_CHN_UNIT_FT_V2) * GetColumnNum()) *
-  //              GetBlockNum() -
-  //          u16TailDelta;
-  // }
-
-  // void Print() const {
-  //   printf("HS_LIDAR_HEADER_FT_V2:\n");
-  //   printf(
-  //       "laserNum:%02u, block_num:%02u, DistUnit:%g, EchoCnt:%02u, "
-  //       "EchoNum:%02u, HasSeqNum:%d, HasIMU:%d\n",
-  //       GetColumnNum(), GetRowNum(), GetDistUnit(), GetEchoCount(),
-  //       GetEchoNum(), HasSeqNum(), HasIMU());
-  // }
-} PACKED;
-#ifdef _MSC_VER
+};
 #pragma pack(pop)
-#endif
 }  // namespace lidar
 }  // namespace hesai
 #endif

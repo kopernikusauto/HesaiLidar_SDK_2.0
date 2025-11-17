@@ -60,59 +60,59 @@ namespace lidar
 namespace gpu
 {
   template <typename T_Point>
-  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, x)>::type setX(T_Point& point, const float& value)
+  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, x)>::type set_x(T_Point& point, const float& value)
   {
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, x)>::type setX(T_Point& point, const float& value)
+  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, x)>::type set_x(T_Point& point, const float& value)
   {
     point.x = value;
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, y)>::type setY(T_Point& point, const float& value)
+  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, y)>::type set_y(T_Point& point, const float& value)
   {
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, y)>::type setY(T_Point& point, const float& value)
+  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, y)>::type set_y(T_Point& point, const float& value)
   {
     point.y = value;
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, z)>::type setZ(T_Point& point, const float& value)
+  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, z)>::type set_z(T_Point& point, const float& value)
   {
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, z)>::type setZ(T_Point& point, const float& value)
+  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, z)>::type set_z(T_Point& point, const float& value)
   {
     point.z = value;
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, intensity)>::type setIntensity(T_Point& point,
+  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, intensity)>::type set_intensity(T_Point& point,
                                                                                         const uint8_t& value)
   {
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, intensity)>::type setIntensity(T_Point& point,
+  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, intensity)>::type set_intensity(T_Point& point,
                                                                                       const uint8_t& value)
   {
     point.intensity = value;
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, timestamp)>::type setTimestamp(T_Point& point,
+  __device__ inline typename std::enable_if<!PANDAR_HAS_MEMBER(T_Point, timestamp)>::type set_timestamp(T_Point& point,
                                                                                         const double& value)
   {
   }
 
   template <typename T_Point>
-  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, timestamp)>::type setTimestamp(T_Point& point,
+  __device__ inline typename std::enable_if<PANDAR_HAS_MEMBER(T_Point, timestamp)>::type set_timestamp(T_Point& point,
                                                                                       const double& value)
   {
     point.timestamp = value;

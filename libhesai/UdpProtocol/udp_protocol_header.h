@@ -43,28 +43,13 @@ namespace lidar
 #define PACKED __attribute__((packed))
 #endif
 
-// static bool IsLittleEndian() {
-//   const int a = 1;
-//   const unsigned char *p = reinterpret_cast<const unsigned char *>(&a);
+inline int doubleToInt(double data) {
+  return static_cast<int>(data + 0.0625);
+}
 
-//   return *p == 1 ? true : false;
-// }
-
-// template <typename T>
-// T little_to_native(T data) {
-//   T out = 0;
-//   if (IsLittleEndian()) {
-//     out = data;
-//   } else {
-//     unsigned char *pSrc = reinterpret_cast<unsigned char *>(&data +
-//                                                             sizeof(data) - 1),
-//                   *pDst = reinterpret_cast<unsigned char *>(&out);
-//     for (size_t i = 0; i < sizeof(data); i++) {
-//       *pDst++ = *pSrc--;
-//     }
-//   }
-//   return out;
-// }
+inline int floatToInt(float data) {
+  return static_cast<int>(data + 0.0625f);
+}
 
 struct HS_LIDAR_PRE_HEADER {
   static const uint16_t kDelimiter = 0xffee;

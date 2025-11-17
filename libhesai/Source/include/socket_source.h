@@ -65,7 +65,7 @@ namespace lidar
 
 class SocketSource : public Source{
  public:
-  SocketSource(uint16_t port = kUdpPort, std::string multicastIp = "");
+  SocketSource(const uint16_t port = kUdpPort, const std::string& localIp = "", const std::string& multicastIp = "");
   virtual ~SocketSource();
 
   virtual bool Open();
@@ -75,14 +75,17 @@ class SocketSource : public Source{
   virtual int Receive(UdpPacket& udpPacket, uint16_t u16Len, int flags = 0,
                       int timeout = 1000);
   virtual void SetSocketBufferSize(uint32_t u32BufSize);
+  void SetClientIp(std::string client_ip);
 private:
-  std::string multicast_ip_;
-  std::string client_ip_;
   uint16_t udp_port_;
-  SOCKET udp_sock_;
+  int udp_sock_;
   bool is_select_;
   static const int32_t kUDPBufferSize = 26214400;  // udp buffer size
   static const uint16_t kUdpPort = 2368;
+  std::string multicast_ip_;
+  std::string client_ip_;
+  sockaddr_in send_addr_;
+  std::string localIp_;
 };
 }  // namespace lidar
 }  // namespace hesai

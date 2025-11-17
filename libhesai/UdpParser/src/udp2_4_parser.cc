@@ -334,12 +334,12 @@ int Udp2_4Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, LidarD
       float x = xyDistance * this->sin_all_angle_[azimuth];
       float y = xyDistance * this->cos_all_angle_[azimuth];
       float z = distance * this->sin_all_angle_[elevation];
-      setX(frame.points[point_index], x);
-      setY(frame.points[point_index], y);
-      setZ(frame.points[point_index], z);
-      setIntensity(frame.points[point_index], packet.reflectivities[blockId * packet.laser_num + i]);
-      setTimestamp(frame.points[point_index], double(packet.sensor_timestamp) / kMicrosecondToSecond);
-      setRing(frame.points[point_index], i);
+      set_x(frame.points[point_index], x);
+      set_y(frame.points[point_index], y);
+      set_z(frame.points[point_index], z);
+      set_intensity(frame.points[point_index], packet.reflectivities[blockId * packet.laser_num + i]);
+      set_timestamp(frame.points[point_index], double(packet.sensor_timestamp) / kMicrosecondToSecond);
+      set_ring(frame.points[point_index], i);
     }
   }
   frame.points_num += packet.points_num;

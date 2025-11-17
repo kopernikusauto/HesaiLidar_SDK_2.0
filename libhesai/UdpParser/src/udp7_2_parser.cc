@@ -33,284 +33,393 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "udp7_2_parser.h"
-#include "udp_protocol_v7_2.h"
-#include "udp_protocol_header.h"
 using namespace hesai::lidar;
 template<typename T_Point>
 Udp7_2Parser<T_Point>::Udp7_2Parser() {
-  this->motor_speed_ = 0;
-  this->return_mode_ = 0;
   this->last_cloumn_id_ = -1;
+  this->default_remake_config.min_azi = 40.0f;
+  this->default_remake_config.max_azi = 140.0f;
+  this->default_remake_config.ring_azi_resolution = 0.625f;
+  this->default_remake_config.max_azi_scan = 160;   // (max_azi - min_azi) / ring_azi_resolution
+  this->default_remake_config.min_elev = -37.5f;
+  this->default_remake_config.max_elev = 37.5f;
+  this->default_remake_config.ring_elev_resolution = 0.625f;
+  this->default_remake_config.max_elev_scan = 120;   // (max_elev - min_elev) / ring_elev_resolution
+  LogInfo("init 7_2 parser");
 }
 template<typename T_Point>
-Udp7_2Parser<T_Point>::~Udp7_2Parser() { printf("release Udp7_2Parser \n"); }
+Udp7_2Parser<T_Point>::~Udp7_2Parser() { LogInfo("release 7_2 Parser "); }
 
+template <typename T_Point>
+void Udp7_2Parser<T_Point>::setFrameRightMemorySpace(LidarDecodedFrame<T_Point> &frame) {
+  frame.resetMalloc(2000, 128);
+}
 
 template<typename T_Point>
-void Udp7_2Parser<T_Point>::LoadCorrectionFile(std::string correction_path) {
-  int ret = 0;
-  printf("load correction file from local correction.csv now!\n");
-  std::ifstream fin(correction_path);
-  if (fin.is_open()) {
-    printf("Open correction file success\n");
-    int length = 0;
-    std::string str_lidar_calibration;
-    fin.seekg(0, std::ios::end);
-    length = fin.tellg();
-    fin.seekg(0, std::ios::beg);
-    char *buffer = new char[length];
-    fin.read(buffer, length);
-    fin.close();
-    str_lidar_calibration = buffer;
-    ret = LoadCorrectionString(buffer);
-    if (ret != 0) {
-      printf("Parse local Correction file Error\n");
+void Udp7_2Parser<T_Point>::LoadCorrectionFile(const std::string& correction_path) {
+  try {
+    LogInfo("load correction file from local correction.csv now!");
+    std::ifstream fin(correction_path, std::ios::binary);
+    if (fin.is_open()) {
+      LogDebug("Open correction file success");
+      int length = 0;
+      fin.seekg(0, std::ios::end);
+      length = static_cast<int>(fin.tellg());
+      fin.seekg(0, std::ios::beg);
+      char *buffer = new char[length];
+      fin.read(buffer, length);
+      fin.close();
+      int ret = LoadCorrectionString(buffer, length);
+      delete[] buffer;
+      if (ret != 0) {
+        LogError("Parse local Correction file Error");
+      } else {
+        LogInfo("Parse local Correction file Success!!!");
+      }
     } else {
-      
-      printf("Parse local Correction file Success!!!\n");
+      LogError("Open correction file failed");
+      return;
     }
-  } else {
-    printf("Open correction file failed\n");
-    return;
+  } catch (const std::exception& e) {
+    LogFatal("error loading correction file: %s", e.what());
   }
 }
 
 template<typename T_Point>
-int Udp7_2Parser<T_Point>::LoadCorrectionString(char *data) {
-  if (LoadCorrectionDatData(data) == 0) {
+int Udp7_2Parser<T_Point>::LoadCorrectionString(const char *correction_string, int len) {
+  if (LoadCorrectionDatData(correction_string, len) == 0) {
     return 0;
   }
-  return LoadCorrectionCsvData(data);
+  return LoadCorrectionCsvData(correction_string, len);
 }
 
 template<typename T_Point>
-int Udp7_2Parser<T_Point>::LoadCorrectionCsvData(char *correction_string) {
-  std::istringstream ifs(correction_string);
-	std::string line;
-  // first line "Laser id,Elevation,Azimuth"
-	if(std::getline(ifs, line)) {  
-		printf("Parse Lidar Correction...\n");
-	}
-	int lineCounter = 0;
-	std::vector<std::string>  firstLine;
-  split_string(firstLine, line, ',');
-  while (std::getline(ifs, line)) {
-    if(line.length() < strlen("1,1,1,1")) {
-      return -1;
-    } 
-    else {
-      lineCounter++;
-    }
-    float elev, azimuth;
-    int lineId = 0;
-    int cloumnId = 0;
-    std::stringstream ss(line);
-    std::string subline;
-    std::getline(ss, subline, ',');
-    std::stringstream(subline) >> lineId;
-    std::getline(ss, subline, ',');
-    std::stringstream(subline) >> cloumnId;
-    std::getline(ss, subline, ',');
-    std::stringstream(subline) >> elev;
-    std::getline(ss, subline, ',');
-    std::stringstream(subline) >> azimuth;
-    corrections_.elevations[lineId - 1][cloumnId - 1] = elev * kResolutionInt;
-    corrections_.azimuths[lineId - 1][cloumnId - 1] = azimuth * kResolutionInt;
-  }
-  this->get_correction_file_ = true;
-	return 0;
-}
-
-template<typename T_Point>
-int Udp7_2Parser<T_Point>::LoadCorrectionDatData(char *correction_string) {
-
+int Udp7_2Parser<T_Point>::LoadCorrectionCsvData(const char *correction_string, int len) {
   try {
-    char *p = correction_string;
-    PandarFTCorrectionsHeader header = *(PandarFTCorrectionsHeader *)p;
+    corrections_.clear();
+    std::string correction_string_str(correction_string, len);
+    std::istringstream ifs(correction_string_str);
+    std::string line;
+    // first line "Laser id,Elevation,Azimuth"
+    if(std::getline(ifs, line)) {  
+      LogInfo("Parse Lidar Correction...");
+    }
+    int lineCounter = 0;
+    std::vector<std::string>  firstLine;
+    split_string(firstLine, line, ',');
+    while (std::getline(ifs, line)) {
+      if(line.length() < strlen("1,1,1,1")) {
+        return -1;
+      } 
+      else {
+        lineCounter++;
+      }
+      float elev, azimuth;
+      int lineId = 0;
+      int columnId = 0;
+      std::stringstream ss(line);
+      std::string subline;
+      std::getline(ss, subline, ',');
+      std::stringstream(subline) >> lineId;
+      std::getline(ss, subline, ',');
+      std::stringstream(subline) >> columnId;
+      std::getline(ss, subline, ',');
+      std::stringstream(subline) >> elev;
+      std::getline(ss, subline, ',');
+      std::stringstream(subline) >> azimuth;
+      if (lineId > FT::CHANNEL_MAX || lineId <= 0 || columnId > FT::COLUMN_MAX || columnId <= 0){
+        throw std::invalid_argument("data error, lineId or columnId out of range");
+      }
+      corrections_.elevations[(lineId - 1) * FT::FT2_CORRECTION_LEN + columnId - 1] = elev;
+      corrections_.azimuths[(lineId - 1) * FT::FT2_CORRECTION_LEN + columnId - 1] = azimuth;
+    }
+    this->loadCorrectionSuccess();
+  } catch (const std::exception &e) {
+    LogFatal("load correction error: %s", e.what());
+    return -1;
+  }
+  return 0;
+}
+
+template<typename T_Point>
+int Udp7_2Parser<T_Point>::LoadCorrectionDatData(const char *data, int len) {
+  try {
+    if (len < 32) {
+      throw std::invalid_argument("correction string length is too short");
+    }
+    const char *p = data;
+    FT::PandarFTCorrectionsHeader header = *(FT::PandarFTCorrectionsHeader *)p;
     if (0xee == header.pilot[0] && 0xff == header.pilot[1]) {
       switch (header.version[1]) {
         case 0: {
-          int column_num = header.column_number;
-          int channel_num = header.channel_number;
-          int resolution = header.resolution;
-          float fResolution = float(resolution);
-          int angleNum = column_num * channel_num;
-          int doubleAngleNum = angleNum * 2;
-          int16_t* angles = new int16_t[doubleAngleNum]{0};
-          int readLen = sizeof(int16_t) * doubleAngleNum;
-          memcpy((void*)angles, correction_string, readLen);
-          int hashLen = 32;
-          uint8_t* hashValue = new uint8_t[hashLen];
-          memcpy((void*)hashValue, correction_string + readLen, hashLen);
-          for (int row = 0; row < column_num; row++) {
-              for (int col = 0; col < channel_num; col++) {
-                  int idx = row * channel_num + col;
-                  corrections_.azimuths[col][row] = angles[idx] * fResolution;
+          corrections_.header = header;
+          p += sizeof(FT::PandarFTCorrectionsHeader);
+          corrections_.column_number = *((uint8_t *)p);
+          p++;
+          corrections_.channel_number = *((uint8_t *)p);
+          p++;
+          corrections_.resolution = *((uint8_t *)p);
+          p++;
+          int doubleAngleNum = corrections_.column_number * corrections_.channel_number * 2;
+          if (static_cast<size_t>(len) < 9 + sizeof(int16_t) * doubleAngleNum + 32) {
+            throw std::invalid_argument("correction string length is too short");
+          }
+          memcpy((void*)corrections_.angles, p, sizeof(int16_t) * doubleAngleNum);
+          p += sizeof(int16_t) * doubleAngleNum;
+          memcpy((void*)corrections_.hashValue, p, 32);
+          for (int col = 0; col < corrections_.column_number; col++) {
+              for (int i = 0; i < corrections_.channel_number; i++) {
+                  int idx = col * corrections_.channel_number + i;
+                  corrections_.azimuths[i * FT::FT2_CORRECTION_LEN + col] = 1.f * corrections_.angles[idx] * corrections_.resolution * 0.01;
               }
           }
-
-          for (int row = 0; row < column_num; row++) {
-              for (int col = 0; col < channel_num; col++) {
-                  int idx = angleNum + row * channel_num + col;
-                  corrections_.elevations[col][row] = angles[idx] * fResolution;
+          for (int col = 0; col < corrections_.column_number; col++) {
+              for (int i = 0; i < corrections_.channel_number; i++) {
+                  int idx = doubleAngleNum / 2 + col * corrections_.channel_number + i;
+                  corrections_.elevations[i * FT::FT2_CORRECTION_LEN + col] = 1.f * corrections_.angles[idx] * corrections_.resolution * 0.01;
               }
           }
-          this->get_correction_file_ = true;
+          this->loadCorrectionSuccess();
           return 0;
         } break;
         case 1: {
-          int column_num = header.column_number;
-          int channel_num = header.channel_number;
-          int resolution = header.resolution;
-          float fResolution = float(resolution);
-          int angleNum = column_num * channel_num;
-          int doubleAngleNum = angleNum * 2;
-          int32_t* angles = new int32_t[doubleAngleNum]{0};
-          int readLen = sizeof(int32_t) * doubleAngleNum;
-          memcpy((void*)angles, correction_string + sizeof(PandarFTCorrectionsHeader), readLen);
-          int hashLen = 32;
-          uint8_t* hashValue = new uint8_t[hashLen];
-          memcpy((void*)hashValue, correction_string + readLen + sizeof(PandarFTCorrectionsHeader), hashLen);
-          for (int row = 0; row < column_num; row++) {
-              for (int col = 0; col < channel_num; col++) {
-                  int idx = row * channel_num + col;
-                  corrections_.azimuths[col][row] = angles[idx] * fResolution;
+          corrections_.header = header;
+          p += sizeof(FT::PandarFTCorrectionsHeader);
+          corrections_.column_number = *((uint8_t *)p);
+          p++;
+          corrections_.channel_number = *((uint8_t *)p);
+          p++;
+          corrections_.resolution = *((uint8_t *)p);
+          p++;
+          int doubleAngleNum = corrections_.column_number * corrections_.channel_number * 2;
+          if (static_cast<size_t>(len) < 9 + sizeof(int32_t) * doubleAngleNum + 32) {
+            throw std::invalid_argument("correction string length is too short");
+          }
+          memcpy((void*)corrections_.angles_32, p, sizeof(int32_t) * doubleAngleNum);
+          p += sizeof(int32_t) * doubleAngleNum;
+          memcpy((void*)corrections_.hashValue, p, 32);
+          for (int col = 0; col < corrections_.column_number; col++) {
+              for (int i = 0; i < corrections_.channel_number; i++) {
+                  int idx = col * corrections_.channel_number + i;
+                  corrections_.azimuths[i * FT::FT2_CORRECTION_LEN + col] = 1.f * corrections_.angles_32[idx] * corrections_.resolution * 0.01;
               }
           }
-
-          for (int row = 0; row < column_num; row++) {
-              for (int col = 0; col < channel_num; col++) {
-                  int idx = angleNum + row * channel_num + col;
-                  corrections_.elevations[col][row] = angles[idx] * fResolution;
+          for (int col = 0; col < corrections_.column_number; col++) {
+              for (int i = 0; i < corrections_.channel_number; i++) {
+                  int idx = doubleAngleNum / 2 + col * corrections_.channel_number + i;
+                  corrections_.elevations[i * FT::FT2_CORRECTION_LEN + col] = 1.f * corrections_.angles_32[idx] * corrections_.resolution * 0.01;
               }
           }
-          this->get_correction_file_ = true;
+          this->loadCorrectionSuccess();
+          return 0;
+        } break;
+        case 2: {
+          corrections_.header = header;
+          p += sizeof(FT::PandarFTCorrectionsHeader);
+          corrections_.column_number = *((uint16_t *)p);
+          p += sizeof(uint16_t);
+          corrections_.channel_number = *((uint16_t *)p);
+          p += sizeof(uint16_t);
+          corrections_.resolution = *((uint8_t *)p);
+          p++;
+          int doubleAngleNum = corrections_.column_number * corrections_.channel_number * 2;
+          if (static_cast<size_t>(len) < 9 + sizeof(int32_t) * doubleAngleNum + 32) {
+            throw std::invalid_argument("correction string length is too short");
+          }
+          memcpy((void*)corrections_.angles_32, p, sizeof(int32_t) * doubleAngleNum);
+          p += sizeof(int32_t) * doubleAngleNum;
+          memcpy((void*)corrections_.hashValue, p, 32);
+          for (int col = 0; col < corrections_.column_number; col++) {
+              for (int i = 0; i < corrections_.channel_number; i++) {
+                  int idx = col * corrections_.channel_number + i;
+                  corrections_.azimuths[i * FT::FT2_CORRECTION_LEN + col] = 1.f * corrections_.angles_32[idx] * corrections_.resolution * 0.01;
+              }
+          }
+          for (int col = 0; col < corrections_.column_number; col++) {
+              for (int i = 0; i < corrections_.channel_number; i++) {
+                  int idx = doubleAngleNum / 2 + col * corrections_.channel_number + i;
+                  corrections_.elevations[i * FT::FT2_CORRECTION_LEN + col] = 1.f * corrections_.angles_32[idx] * corrections_.resolution * 0.01;
+              }
+          }
+          this->loadCorrectionSuccess();
           return 0;
         } break;
         default:
           break;
       }
     }
-
     return -1;
   } catch (const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    LogFatal("load correction error: %s", e.what());
     return -1;
   }
-
   return -1;
-
 }
 
 template<typename T_Point>
-int Udp7_2Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, LidarDecodedPacket<T_Point> &packet) {
-  // T_Point point;
-  for (int i = 0; i < packet.laser_num; i++) {
-    int point_index = packet.packet_index * packet.points_num + i;
-    float distance = packet.distances[i] * packet.distance_unit;
-    int azimuth = 0;
-    int elevation = 0;   
-    if (this->get_correction_file_) {
-      azimuth = packet.azimuth[i];
-      elevation = packet.elevation[i];
-      elevation = (CIRCLE + elevation) % CIRCLE;
-      azimuth = (CIRCLE + azimuth) % CIRCLE;
-    }
-    if (packet.config.fov_start != -1 && packet.config.fov_end != -1)
-    {
-      int fov_transfer = azimuth / 256 / 100;
-      if (fov_transfer < packet.config.fov_start || fov_transfer > packet.config.fov_end){//不在fov范围continue
-        continue;
-      }
-    }           
-    float xyDistance = distance * this->cos_all_angle_[(elevation)];
-    float x = xyDistance * this->sin_all_angle_[(azimuth)];
-    float y = xyDistance * this->cos_all_angle_[(azimuth)];
-    float z = distance * this->sin_all_angle_[(elevation)];
-    this->TransformPoint(x, y, z);
-    setX(frame.points[point_index], x);
-    setY(frame.points[point_index], y);
-    setZ(frame.points[point_index], z);
-    setIntensity(frame.points[point_index], packet.reflectivities[i]);
-    setTimestamp(frame.points[point_index], double(packet.sensor_timestamp) / kMicrosecondToSecond);
-    setRing(frame.points[point_index], i);
-  }
-  frame.points_num += packet.points_num;
-  frame.packet_num = packet.packet_index;
-  return 0;
+void Udp7_2Parser<T_Point>::LoadFiretimesFile(const std::string& firetimes_path) {
+  LogWarning("don't support firetimes file");
 }
 
 template<typename T_Point>
-int Udp7_2Parser<T_Point>::DecodePacket(LidarDecodedPacket<T_Point> &output, const UdpPacket& udpPacket) {
-  if (udpPacket.buffer[0] != 0xEE || udpPacket.buffer[1] != 0xFF ) {
-    return -1;
-  }
-  const HS_LIDAR_HEADER_FT_V2 *pHeader =
-      reinterpret_cast<const HS_LIDAR_HEADER_FT_V2 *>(
-          &(udpPacket.buffer[0]) + sizeof(HS_LIDAR_PRE_HEADER));
-
-  const HS_LIDAR_TAIL_FT_V2 *pTail =
-      reinterpret_cast<const HS_LIDAR_TAIL_FT_V2 *>(
-          (const unsigned char *)pHeader + sizeof(HS_LIDAR_HEADER_FT_V2) +
-          (sizeof(HS_LIDAR_BODY_CHN_UNIT_FT_V2) * pHeader->GetChannelNum()));  
-  if (output.use_timestamp_type == 0) {
-    output.sensor_timestamp = pTail->GetMicroLidarTimeU64();
-  } else {
-    output.sensor_timestamp = udpPacket.recv_timestamp;
-  }
-  output.host_timestamp = GetMicroTickCountU64();
-
-  if (this->enable_packet_loss_tool_ == true) {
-    this->current_seqnum_ = pTail->sequence_num;
-    if (this->current_seqnum_ > this->last_seqnum_ && this->last_seqnum_ != 0) {
-      this->total_packet_count_ += this->current_seqnum_ - this->last_seqnum_;
-    }
-    pTail->CalPktLoss(this->start_seqnum_, this->last_seqnum_, this->loss_count_, 
-        this->start_time_, this->total_loss_count_, this->total_start_seqnum_);
-    return 0;
-  }    
-
-  output.maxPoints = pHeader->GetChannelNum();
-  output.points_num = pHeader->GetChannelNum();
-  output.scan_complete = false;
-  output.distance_unit = pHeader->GetDistUnit();
-  int index = 0;
-  // float minAzimuth = 0;
-  // float maxAzimuth = 0;
-  output.block_num = 1;
-  output.laser_num = pHeader->GetChannelNum();
-
-  const HS_LIDAR_BODY_CHN_UNIT_FT_V2 *pChnUnit =
-      reinterpret_cast<const HS_LIDAR_BODY_CHN_UNIT_FT_V2 *>(
-          (const unsigned char *)pHeader + sizeof(HS_LIDAR_HEADER_FT_V2));
-  for (int blockid = 0; blockid < 1; blockid++) {
-    for (int i = 0; i < pHeader->GetChannelNum(); i++) {
-      output.azimuth[index] = corrections_.azimuths[i][pTail->column_id];
-      output.elevation[index] = corrections_.elevations[i][pTail->column_id];
-      output.reflectivities[index] = pChnUnit->GetReflectivity();  
-      output.distances[index] = pChnUnit->GetDistance();
-      pChnUnit = pChnUnit + 1;
-      index++;
-    }
-  }
-  if (IsNeedFrameSplit(pTail->column_id, pHeader->total_column)) {
-    output.scan_complete = true;
-  }
-  this->last_cloumn_id_ = pTail->column_id;
-  return 0;
-}  
-
-template<typename T_Point>
-bool Udp7_2Parser<T_Point>::IsNeedFrameSplit(uint16_t column_id, uint16_t total_column) {
+bool Udp7_2Parser<T_Point>::IsNeedFrameSplit(uint16_t column_id) {
   if (column_id < this->last_cloumn_id_) {
       return true;
     }
   return false;
 }
 
+template <typename T_Point>
+void* Udp7_2Parser<T_Point>::getStruct(const int type) {
+  if (type == CORRECTION_STRUCT)
+    return (void*)&(corrections_);
+  else if (type == FIRETIME_STRUCT)
+    return nullptr;
+  return nullptr;
+}
+
+template <typename T_Point>
+int Udp7_2Parser<T_Point>::getDisplay(bool **display) {
+  *display = corrections_.display;
+  return FT::FT2_CORRECTION_LEN * FT::FT2_CORRECTION_LEN;
+}
+
 template<typename T_Point>
-int Udp7_2Parser<T_Point>::DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket)
-{
-  // TO DO
+int Udp7_2Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32_t packet_index) {
+  if (packet_index >= frame.maxPacketPerFrame || frame.point_cloud_raw_data == nullptr) {
+    LogFatal("packet_index(%d) out of %d. or data ptr is nullptr", packet_index, frame.maxPacketPerFrame);
+    GeneralParser<T_Point>::FrameNumAdd();
+    return -1;
+  }
+  uint8_t* data = frame.point_cloud_raw_data + packet_index * frame.point_cloud_size;
+  const HS_LIDAR_HEADER_FT_V2 *pHeader =
+      reinterpret_cast<const HS_LIDAR_HEADER_FT_V2 *>(
+          data + sizeof(HS_LIDAR_PRE_HEADER));
+  const HS_LIDAR_TAIL_FT_V2 *pTail =
+      reinterpret_cast<const HS_LIDAR_TAIL_FT_V2 *>(
+          (const unsigned char *)pHeader + sizeof(HS_LIDAR_HEADER_FT_V2) +
+          (sizeof(HS_LIDAR_BODY_CHN_UNIT_FT_V2) * pHeader->GetChannelNum()));  
+  int point_index = packet_index * frame.per_points_num;
+  int point_num = 0;
+  auto& packetData = frame.packetData[packet_index];
+  const HS_LIDAR_BODY_CHN_UNIT_FT_V2 *pChnUnit =
+      reinterpret_cast<const HS_LIDAR_BODY_CHN_UNIT_FT_V2 *>(
+          (const unsigned char *)pHeader + sizeof(HS_LIDAR_HEADER_FT_V2));
+  for (int channel_index = 0; channel_index < pHeader->GetChannelNum(); channel_index++) {
+    if (corrections_.display[channel_index * FT::FT2_CORRECTION_LEN + pTail->column_id] == false) {
+      pChnUnit++;
+      continue;
+    }
+    float raw_azimuth = corrections_.azimuths[channel_index * FT::FT2_CORRECTION_LEN + pTail->column_id];
+    float raw_elevation = corrections_.elevations[channel_index * FT::FT2_CORRECTION_LEN + pTail->column_id];
+    float distance = static_cast<float>(pChnUnit->GetDistance() * frame.distance_unit);
+    int elevation = floatToInt(raw_elevation * kAllFineResolutionInt);
+    int azimuth = floatToInt(raw_azimuth * kAllFineResolutionInt);
+    this->CircleRevise(azimuth);
+    this->CircleRevise(elevation);
+    if (this->IsChannelFovFilter(azimuth / kAllFineResolutionInt, channel_index, frame.fParam) == 1) {
+      pChnUnit++;
+      continue;
+    }
+    float xyDistance = distance * this->cos_all_angle_[(elevation)];
+    float x = xyDistance * this->sin_all_angle_[(azimuth)];
+    float y = xyDistance * this->cos_all_angle_[(azimuth)];
+    float z = distance * this->sin_all_angle_[(elevation)];
+    this->TransformPoint(x, y, z, frame.fParam.transform);
+
+    int point_index_rerank = point_index + point_num; 
+    GeneralParser<T_Point>::DoRemake(azimuth, elevation, frame.fParam.remake_config, point_index_rerank); 
+    if(point_index_rerank >= 0) { 
+      auto& ptinfo = frame.points[point_index_rerank]; 
+      set_x(ptinfo, x); 
+      set_y(ptinfo, y); 
+      set_z(ptinfo, z); 
+      set_ring(ptinfo, channel_index); 
+      set_intensity(ptinfo, pChnUnit->GetReflectivity());  
+      set_timestamp(ptinfo, double(packetData.t.sensor_timestamp) / kMicrosecondToSecond);
+
+      point_num++;
+    }
+    pChnUnit++;
+  }
+  frame.valid_points[packet_index] = point_num;
+  GeneralParser<T_Point>::FrameNumAdd();
   return 0;
 }
+
+template<typename T_Point>
+int Udp7_2Parser<T_Point>::DecodePacket(LidarDecodedFrame<T_Point> &frame, const UdpPacket& udpPacket, const int packet_index) 
+{
+  uint32_t packet_index_use = (packet_index >= 0 ? packet_index : frame.packet_num);
+  if (udpPacket.buffer[0] != 0xEE || udpPacket.buffer[1] != 0xFF ||
+      udpPacket.buffer[2] != 7 || udpPacket.buffer[3] != 2) {
+    LogDebug("Invalid point cloud");
+    return -1;
+  }
+  frame.scan_complete = false;
+
+  const HS_LIDAR_HEADER_FT_V2 *pHeader =
+      reinterpret_cast<const HS_LIDAR_HEADER_FT_V2 *>(
+          &(udpPacket.buffer[0]) + sizeof(HS_LIDAR_PRE_HEADER));
+  if (frame.frame_init_ == false) {
+    frame.block_num = 1;
+    frame.laser_num = pHeader->GetChannelNum();
+    frame.per_points_num = pHeader->GetChannelNum();
+    frame.distance_unit = pHeader->GetDistUnit();
+    if (frame.per_points_num > frame.maxPointPerPacket) {
+      LogFatal("per_points_num(%u) out of %d", frame.per_points_num, frame.maxPointPerPacket);
+      return -1;
+    }
+    if (frame.laser_num > FT::CHANNEL_MAX) {
+      LogFatal("laser_num(%u) out of %d", frame.laser_num, FT::CHANNEL_MAX);
+      return -1;
+    }
+    frame.frame_init_ = true;
+  }
+  if (pHeader->GetChannelNum() != frame.laser_num
+      || pHeader->GetDistUnit() != frame.distance_unit) {
+    LogFatal("block_num or laser_num or distance_unit is not match");
+    return -1;
+  }
+  const HS_LIDAR_TAIL_FT_V2 *pTail =
+      reinterpret_cast<const HS_LIDAR_TAIL_FT_V2 *>(
+          (const unsigned char *)pHeader + sizeof(HS_LIDAR_HEADER_FT_V2) +
+          (sizeof(HS_LIDAR_BODY_CHN_UNIT_FT_V2) * pHeader->GetChannelNum()));  
+  
+  if (IsNeedFrameSplit(pTail->column_id)) {
+    frame.scan_complete = true;
+  }
+  this->last_cloumn_id_ = pTail->column_id;
+  if (frame.scan_complete)
+    return 0;
+    
+  this->CalPktLoss(pTail->GetSeqNum(), frame.fParam);
+  this->CalPktTimeLoss(pTail->GetMicroLidarTimeU64(this->last_utc_time), frame.fParam);
+
+  if (frame.fParam.use_timestamp_type == 0) {
+    frame.packetData[packet_index_use].t.sensor_timestamp = pTail->GetMicroLidarTimeU64(this->last_utc_time);
+  } else {
+    frame.packetData[packet_index_use].t.sensor_timestamp = udpPacket.recv_timestamp;
+  }   
+  if (frame.frame_start_timestamp == 0) frame.frame_start_timestamp = double(frame.packetData[packet_index_use].t.sensor_timestamp) / kMicrosecondToSecond;
+  frame.frame_end_timestamp = double(frame.packetData[packet_index_use].t.sensor_timestamp) / kMicrosecondToSecond;
+  
+  frame.return_mode = pTail->GetReturnMode();
+ 
+  auto packet_size = udpPacket.packet_len;
+  if (this->last_max_packet_num_ != frame.maxPacketPerFrame) {
+    this->last_max_packet_num_ = frame.maxPacketPerFrame;
+    if (frame.point_cloud_raw_data != nullptr) delete[] frame.point_cloud_raw_data;
+    frame.point_cloud_size = packet_size;
+    frame.point_cloud_raw_data = new uint8_t[frame.point_cloud_size * frame.maxPacketPerFrame];
+    memset(frame.point_cloud_raw_data, 0, frame.point_cloud_size * frame.maxPacketPerFrame);
+  }
+  if (frame.point_cloud_size != packet_size) {
+    LogFatal("point cloud size is should be %d, but is %d", frame.point_cloud_size, packet_size);
+    return -1;
+  }
+  memcpy(frame.point_cloud_raw_data + packet_index_use * frame.point_cloud_size, udpPacket.buffer, packet_size);
+  frame.packet_num++;
+  return 0;
+}
+

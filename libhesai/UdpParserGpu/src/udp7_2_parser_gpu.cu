@@ -83,11 +83,11 @@ __global__ void compute_xyzs_7_2_impl(T_Point *xyzs, const float* channel_azimut
   float y_ = cosb * sinc * x + (cosa * cosc + sina * sinb * sinc) * y +
               (cosa * sinb * sinc - sina * cosc) * z + transform.y;
   float z_ = -sinb * x + sina * cosb * y + cosa * cosb * z + transform.z;
-  gpu::setX(xyzs[iscan * blocknum * lasernum + ichannel], x_);
-  gpu::setY(xyzs[iscan * blocknum * lasernum + ichannel],  y_);
-  gpu::setZ(xyzs[iscan * blocknum * lasernum + ichannel], z_);
-  gpu::setIntensity(xyzs[iscan * blocknum * lasernum + ichannel], raw_reflectivities[iscan * blocknum * lasernum + ichannel]);
-  gpu::setTimestamp(xyzs[iscan * blocknum * lasernum + ichannel], double(raw_sensor_timestamp[iscan]) / kMicrosecondToSecond);
+  gpu::set_x(xyzs[iscan * blocknum * lasernum + ichannel], x_);
+  gpu::set_y(xyzs[iscan * blocknum * lasernum + ichannel],  y_);
+  gpu::set_z(xyzs[iscan * blocknum * lasernum + ichannel], z_);
+  gpu::set_intensity(xyzs[iscan * blocknum * lasernum + ichannel], raw_reflectivities[iscan * blocknum * lasernum + ichannel]);
+  gpu::set_timestamp(xyzs[iscan * blocknum * lasernum + ichannel], double(raw_sensor_timestamp[iscan]) / kMicrosecondToSecond);
 }
 
 template <typename T_Point>

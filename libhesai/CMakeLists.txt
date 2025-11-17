@@ -19,12 +19,14 @@ add_library(HesaiLidar
     src/auto_tick_count.cc
     Container/src/ring_2d_shared.cc
     Container/src/ring_2dex.cc
+    SerialClient/src/serial_client.cc
 )
 target_include_directories(HesaiLidar PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Lidar>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/SerialClient/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/SerialClient/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Source/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpProtocol>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpParser/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/UdpParser/src>
@@ -32,6 +34,7 @@ target_include_directories(HesaiLidar PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Container/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Common/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Common/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Logger/include>
 
     $<INSTALL_INTERFACE:include>
     $<INSTALL_INTERFACE:include/Lidar>
@@ -51,6 +54,7 @@ file(GLOB_RECURSE _udpprotocol_headers
 )
 file(GLOB_RECURSE _serialclient_headers
     SerialClient/*.h
+    SerialClient/*.cc
 )
 
 file(GLOB_RECURSE _common_headers
@@ -98,8 +102,10 @@ file(GLOB_RECURSE _ptc_client_headers
 )
 
 add_library(HesaiSource
+    Source/src/serial_source.cc
     Source/src/source.cc
     Source/src/socket_source.cc
+    Source/src/tcp_source.cc
     Source/src/pcap_source.cc
     Source/src/pcap_saver.cc
 )
@@ -114,6 +120,7 @@ target_include_directories(HesaiSource PUBLIC
 set_target_properties(HesaiSource PROPERTIES CXX_STANDARD_REQUIRED TRUE CXX_STANDARD 17)
 file(GLOB_RECURSE _hesai_source_headers
     Source/include/*.h
+    Source/src/*.cc
 )
 
 ###########################################

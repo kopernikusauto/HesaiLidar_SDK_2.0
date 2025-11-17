@@ -93,8 +93,8 @@ typedef struct DecoderParam
   bool et_blooming_filter_flag = false;
   RemakeConfig remake_config;
   uint32_t socket_buffer_size = 0;
-  char channel_fov_filter_path[512] = "";  // correction/config/channel_fov_filter.txt
-  char multi_fov_filter_ranges[512] = "";  // multiple fov filter ranges, for all channels
+  char channel_fov_filter_path[32] = "";  // correction/config/channel_fov_filter.txt
+  char multi_fov_filter_ranges[32] = "";  // multiple fov filter ranges, for all channels
   float frame_frequency = 0;
   float default_frame_frequency = DEFAULT_MAX_MULTI_FRAME_NUM;
   bool update_function_safety_flag = false;
