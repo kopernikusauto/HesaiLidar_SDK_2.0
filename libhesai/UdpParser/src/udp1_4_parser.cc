@@ -411,10 +411,10 @@ int Udp1_4Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32
       if (hasEnvLight(pHeader->m_u8Status)) envLight = pChnUnit->reserved[k];
 
       float distance = static_cast<float>(pChnUnit->GetDistance() * frame.distance_unit);
-      if (this->get_firetime_file_ && frame.fParam.firetimes_flag) {
+      if (frame.fParam.firetimes_flag) {
+        auto correction = this->firetime_correction_[channel_index] * pTail->GetMotorSpeed() * 6E-9;
         azimuth += (frame.fParam.rotation_flag > 0 ? 1 : -1) * 
-          doubleToInt(GetFiretimesCorrection(channel_index, pTail->GetMotorSpeed() * (this->lidar_type_ != STR_OTHER ? 1.0 : 0.1), 
-          pTail->getOperationMode(), angleState, distance) * kAllFineResolutionInt);
+          doubleToInt(correction * kAllFineResolutionInt);
       }
       if (this->get_correction_file_) {
         int azimuth_coll = doubleToInt(this->correction.azimuth[channel_index] * kAllFineResolutionFloat);
