@@ -62,21 +62,25 @@ Lidar<T_Point>::~Lidar() {
   if (Receive_packet_thread_ptr_) {
     Receive_packet_thread_ptr_->join();
     Receive_packet_thread_ptr_.reset();
+    Receive_packet_thread_ptr_ = nullptr;
   }
 
   if (Receive_packet_thread_ptr_fault_message_) {
     Receive_packet_thread_ptr_fault_message_->join();
     Receive_packet_thread_ptr_fault_message_.reset();
+    Receive_packet_thread_ptr_fault_message_ = nullptr;
   }
 
   if (parser_thread_ptr_) {
     parser_thread_ptr_->join();
     parser_thread_ptr_.reset();
+    parser_thread_ptr_ = nullptr;
   }
 
   if (init_set_ptc_ptr_) {
     init_set_ptc_ptr_->join();
     init_set_ptc_ptr_.reset();
+    init_set_ptc_ptr_ = nullptr;
   }
   if (handle_thread_count_ > 1) {
     for (int i = 0; i < handle_thread_count_; i++) {
@@ -202,15 +206,14 @@ int Lidar<T_Point>::Init(const DriverParam& param) {
     UdpPacket udp_packet;
     auto init_start_time = std::chrono::high_resolution_clock::now();
     while (GetGeneralParser() == nullptr && init_running) {
-      int ret = this->GetOnePacket(udp_packet);
+      if (this->GetOnePacket(udp_packet) == -1) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        continue;
+      }
       auto end_time = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = end_time - init_start_time;
       if (param.input_param.recv_point_cloud_timeout >= 0 && 
            elapsed_seconds.count() > param.input_param.recv_point_cloud_timeout) break;
-      if (ret == -1) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        continue;
-      }
       this->DecodePacket(frame_, udp_packet);
     }
     if (GetGeneralParser() == nullptr) {
@@ -556,7 +559,7 @@ void Lidar<T_Point>::ReceiveUdpThread() {
       continue;
     }
     UdpPacket udp_packet;
-    int len = source_->Receive(udp_packet, kBufSize);
+    int len = source_->Receive(udp_packet, kBufSize, 1000000);
     if (len == -1) {
       std::this_thread::sleep_for(std::chrono::microseconds(1000));
       continue;
@@ -567,10 +570,10 @@ void Lidar<T_Point>::ReceiveUdpThread() {
     switch (len) {
       case 0:
         if (is_timeout_ == false) {
-          udp_packet.packet_len = AT128E2X_PACKET_LEN; 
-          udp_packet.buffer[0] = 0;
-          udp_packet.buffer[1] = 0;
-          origin_packets_buffer_.emplace_back(udp_packet);
+          // udp_packet.packet_len = AT128E2X_PACKET_LEN; 
+          // udp_packet.buffer[0] = 0;
+          // udp_packet.buffer[1] = 0;
+          // origin_packets_buffer_.emplace_back(udp_packet);
           is_timeout_ = true;
         } 
         break;

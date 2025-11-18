@@ -49,7 +49,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pcap_saver.h"
 #include "Version.h"
 #ifndef _MSC_VER
-#include <endian.h>
+#if defined(__linux__)
+#include <endian.h>       // Linux
+#elif defined(__APPLE__) && defined(__MACH__)
+#include <sys/endian.h>   // macOS / BSD
+#endif
 #include <semaphore.h>
 #endif
 #define AT128E2X_PACKET_LEN (1180)
