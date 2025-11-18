@@ -412,13 +412,23 @@ int Udp1_4Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32
 
       float distance = static_cast<float>(pChnUnit->GetDistance() * frame.distance_unit);
       if (frame.fParam.firetimes_flag) {
-        auto correction = this->firetime_correction_[channel_index] * pTail->GetMotorSpeed() * 6E-9;
-        azimuth += (frame.fParam.rotation_flag > 0 ? 1 : -1) * 
-          doubleToInt(correction * kAllFineResolutionInt);
+        if (this->lidar_type_ == STR_OTHER) {
+          // JT128
+          auto correction = this->firetime_correction_[channel_index] * pTail->GetMotorSpeed() * 6E-9;
+          azimuth += (frame.fParam.rotation_flag > 0 ? 1 : -1) * doubleToInt(correction * kAllFineResolutionInt);
+        }
+        else {
+          if (this->get_firetime_file_) {
+            azimuth += (frame.fParam.rotation_flag > 0 ? 1 : -1) * 
+              doubleToInt(GetFiretimesCorrection(channel_index, pTail->GetMotorSpeed() * (this->lidar_type_ != STR_OTHER ? 1.0 : 0.1), 
+              pTail->getOperationMode(), angleState, distance) * kAllFineResolutionInt);
+          }
+        }
       }
       if (this->get_correction_file_) {
         int azimuth_coll = doubleToInt(this->correction.azimuth[channel_index] * kAllFineResolutionFloat);
-        int elevation_corr = doubleToInt((this->correction.elevation[channel_index] + 0.7) * kAllFineResolutionFloat);
+        int elevation_corr = doubleToInt((this->correction.elevation[channel_index] + 0.7) * // added 0.7 to elevation due to error during factory calibration.
+                                kAllFineResolutionFloat);
         if (frame.fParam.distance_correction_flag) {
           GeneralParser<T_Point>::GetDistanceCorrection(this->optical_center, azimuth_coll, elevation_corr, distance, this->lidar_type_ != STR_OTHER ? GeometricCenter : OpticalCenter);
         }

@@ -89,6 +89,7 @@ typedef struct DecoderParam
   int fov_start = -1;
   int fov_end = -1;
   bool distance_correction_flag = false;
+  bool firetime_correction_flag = false;
   bool xt_spot_correction = false;
   bool et_blooming_filter_flag = false;
   RemakeConfig remake_config;

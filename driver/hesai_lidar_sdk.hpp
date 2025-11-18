@@ -212,6 +212,7 @@ public:
         printf("lidar_ptr_ is nullptr, start failed!!!!!!!!!\n");
         return;
       }
+      is_thread_runing_ = true;
       if ((source_type_ == DATA_FROM_LIDAR && lidar_ptr_->GetInitFinish(FaultMessParse)) || lidar_ptr_->GetInitFinish(AllInitFinish)) {
         runing_thread_ptr_ = new std::thread(std::bind(&HesaiLidarSdk::Run, this));
         break;
@@ -226,7 +227,6 @@ public:
   void Run()
   {
     LogInfo("--------begin to parse udp package--------");
-    is_thread_runing_ = true;
     UdpFrame_t udp_packet_frame;
     uint32_t packet_index = 0;
     // uint32_t start = GetMicroTickCount();
@@ -315,11 +315,6 @@ public:
         if (ret == 0 && lidar_ptr_->frame_.points_num > kMinPointsOfOneFrame) {
           lidar_ptr_->GetGeneralParser()->FrameProcess(lidar_ptr_->frame_);
           MultiSend();
-
-          //publish upd packet topic
-          if(pkt_cb_) {
-            pkt_cb_(udp_packet_frame, lidar_ptr_->frame_.frame_start_timestamp);
-          }
 
           if (pkt_loss_cb_ )
           {

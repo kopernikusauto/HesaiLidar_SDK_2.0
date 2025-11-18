@@ -199,7 +199,7 @@ struct FrameDecodeParam {
   void Init(const DriverParam& param) {
     use_timestamp_type = param.decoder_param.use_timestamp_type;
     pcap_time_synchronization = param.decoder_param.pcap_play_synchronization;
-    firetimes_flag = true;
+    firetimes_flag = param.decoder_param.firetime_correction_flag;
     dcf_flag = true;
     distance_correction_flag = param.decoder_param.distance_correction_flag;
     xt_spot_correction = param.decoder_param.xt_spot_correction;
