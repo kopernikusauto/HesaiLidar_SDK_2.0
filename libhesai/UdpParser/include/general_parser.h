@@ -46,9 +46,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define M_PI_DIVIDE_180 (0.01745329251994329575)
 #define _180_DIVIDE_M_PI (57.29577951308232087721)
 
-#ifndef _MSC_VER
 #include <semaphore.h>
-#endif
 #include <list>
 #include <cmath>
 #include <vector>

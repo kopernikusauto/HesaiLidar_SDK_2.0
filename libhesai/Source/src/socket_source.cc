@@ -56,27 +56,14 @@ void SocketSource::Close() {
   // udp_port_ = 0;
 
   if (udp_sock_ != -1) {
-#ifdef _MSC_VER
-    closesocket(udp_sock_);
-    WSACleanup();
-#else
     close(udp_sock_);
-#endif
     udp_sock_ = -1;
   }
 }
 
 
 bool SocketSource::Open() {
-#ifdef _MSC_VER
-    WSADATA wsaData;
-    WORD version = MAKEWORD(2, 2);
-    int res = WSAStartup(version, &wsaData);  // win sock start up
-    if (res) {
-        LogError("Initilize winsock error !");
-        return false;
-    }
-#endif
+
   int retVal = 0;
   struct sockaddr_in serverAddr;
 
@@ -106,27 +93,16 @@ bool SocketSource::Open() {
   LogInfo("OS current udp socket recv buff size is: %d", curRcvBufSize); 
 
   if (retVal == 0) {
-#ifdef _MSC_VER
-    int timeout_ms = 20;
-    retVal = setsockopt(udp_sock_, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_ms,
-        sizeof(timeout_ms));
-    // SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
-#else
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 20000;
 
     retVal = setsockopt(udp_sock_, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout,
                         sizeof(struct timeval));
-#endif
     if (retVal == 0) {
       if (bind(udp_sock_, (sockaddr*)&serverAddr, sizeof(sockaddr)) == -1) {
         if (EINPROGRESS != errno && EWOULDBLOCK != errno) {
-#ifdef _MSC_VER
-          closesocket(udp_sock_);
-#else
           close(udp_sock_);
-#endif
           udp_sock_ = -1;
           LogError("SocketSource::Open(), bind failed, errno: %d", errno);
           return false;
@@ -140,16 +116,9 @@ bool SocketSource::Open() {
   } else {
     LogError("setsockopt SO_REUSEADDR failed, errno:%d", errno);
   }
-#ifdef _MSC_VER
-  unsigned long nonBlockingMode = 1;
-  if (ioctlsocket(udp_sock_, FIONBIO, &nonBlockingMode) != 0) {
-      LogError("non-block");
-  }
-#else
   if (fcntl(udp_sock_, F_SETFL, O_NONBLOCK | FASYNC) < 0) {
     LogError("non-block");
   }
-#endif
 
   int32_t rcvBufSize = kUDPBufferSize;
   setsockopt(udp_sock_, SOL_SOCKET, SO_RCVBUF, (char*)&rcvBufSize,

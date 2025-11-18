@@ -40,16 +40,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <thread>
 #include <iostream>
 #include <cstring>
-#ifdef _MSC_VER
-#ifndef MSG_DONTWAIT
-#define MSG_DONTWAIT (0x40)
-#endif
-#else
 #include <netinet/in.h>
 #include <unistd.h>
 #include <sched.h>
 #include <sys/socket.h>
-#endif
 
 using namespace hesai::lidar;
 const std::string PtcClient::kLidarIPAddr("192.168.1.201");

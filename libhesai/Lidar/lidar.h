@@ -48,14 +48,12 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "tcp_source.h"
 #include "pcap_saver.h"
 #include "Version.h"
-#ifndef _MSC_VER
 #if defined(__linux__)
 #include <endian.h>       // Linux
 #elif defined(__APPLE__) && defined(__MACH__)
 #include <sys/endian.h>   // macOS / BSD
 #endif
 #include <semaphore.h>
-#endif
 #define AT128E2X_PACKET_LEN (1180)
 #define GPS_PACKET_LEN (512)
 #define CMD_SET_STANDBY_MODE (0x1c)

@@ -46,11 +46,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include "logger.h"
 
-#ifdef _MSC_VER
-#include <WinSock2.h>
-#else
 #include <arpa/inet.h>
-#endif
 namespace hesai
 {
 namespace lidar

@@ -28,8 +28,6 @@
  */
 #ifndef PTC_2_0_PARSER_H_
 #define PTC_2_0_PARSER_H_
-#ifdef _MSC_VER
-#endif
 #include <iostream>
 #include <fstream>
 #include "inner_com.h"

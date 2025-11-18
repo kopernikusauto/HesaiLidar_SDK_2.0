@@ -1,11 +1,8 @@
 #ifndef _PLAT_UTILS_H_
 #define _PLAT_UTILS_H_
 
-#ifdef _MSC_VER
-#else
 #include <pthread.h>
 #include <sched.h>
-#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,14 +17,8 @@
 #define SHED_FIFO_PRIORITY_LOW 1
 #define ISO_8601_FORMAT 1
 
-#ifdef _MSC_VER
-extern void SetThreadPriorityWin(int priority);
-#else
 extern void SetThreadPriority(int policy, int priority);
-#endif
-#ifndef _MSC_VER
 extern unsigned int GetTickCount();
-#endif
 
 extern unsigned int GetMicroTickCount();
 

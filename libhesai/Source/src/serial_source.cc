@@ -44,11 +44,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace hesai::lidar;
 SerialSource::SerialSource(const std::string dev, int baudrate, int point_cloud_baudrate) {
-#ifdef _MSC_VER
-  m_iFd = INVALID_HANDLE_VALUE;
-#else
   m_iFd = -1;
-#endif
   dev_ = dev;
   baudrate_ = baudrate;
   serialData = new uint8_t[kDataMaxLength];
@@ -87,63 +83,14 @@ bool SerialSource::Open() {
 }
 
 bool SerialSource::IsOpened() {
-#ifdef _MSC_VER
-  if (m_iFd == INVALID_HANDLE_VALUE) {
-    return false;
-  }
-  return true;
-#else
   if (m_iFd >= 0) {
     return true;
   }
   return false;
-#endif
 }
 
 int SerialSource::Open(const char *dev, int baudrate) {
   Close();
-#ifdef _MSC_VER
-  std::string devPath = dev;
-  if(devPath.length() > 4) {
-    devPath = "\\\\.\\" + devPath;
-  }
-  m_iFd = CreateFile(devPath.c_str(),  
-                    GENERIC_READ | GENERIC_WRITE,  
-                    0,  
-                    nullptr,  
-                    OPEN_EXISTING,  
-                    0,  
-                    nullptr);  
-  if (m_iFd == INVALID_HANDLE_VALUE) {  
-      return -1;  
-  }  
-
-  // 配置串口参数  
-  DCB dcbSerialParams = {0};  
-  dcbSerialParams.DCBlength = sizeof(dcbSerialParams);  
-  
-  dcbSerialParams.BaudRate = baudrate;    
-  dcbSerialParams.ByteSize = 8;           // 数据位  
-  dcbSerialParams.StopBits = ONESTOPBIT; // 停止位  
-  dcbSerialParams.Parity = NOPARITY;      // 校验位  
-
-  // 设置串口状态  
-  if (!SetCommState(m_iFd, &dcbSerialParams)) {  
-      CloseHandle(m_iFd);  
-      m_iFd = INVALID_HANDLE_VALUE;
-      return -1;    
-  }  
-
-  // 设置超时参数  
-  COMMTIMEOUTS timeouts = {0};  
-  timeouts.ReadIntervalTimeout = 1;  
-  timeouts.ReadTotalTimeoutConstant = 1;  
-  timeouts.ReadTotalTimeoutMultiplier = 0;  
-  timeouts.WriteTotalTimeoutConstant = 50;  
-  timeouts.WriteTotalTimeoutMultiplier = 1;  
-
-  SetCommTimeouts(m_iFd, &timeouts);  
-#else
   /* Open SerialSource port */
   if ((m_iFd = open(dev, O_RDWR | O_NOCTTY)) < 0) {
     // perror("open");
@@ -181,7 +128,6 @@ int SerialSource::Open(const char *dev, int baudrate) {
     m_iFd= -1;
     return -1;
   }
-#endif
   return 0;
 }
 
@@ -194,28 +140,14 @@ void SerialSource::Close() {
     dataIndex = 0;
     dataLength = 0;
   }
-#ifdef _MSC_VER
-  if (m_iFd != INVALID_HANDLE_VALUE) {
-    CloseHandle(m_iFd);  
-    m_iFd = INVALID_HANDLE_VALUE;
-  }
-#else
   if (m_iFd >= 0) {
     close(m_iFd);
     m_iFd = -1;
   }
-#endif
 }
 
 int SerialSource::WaitRead(int32_t timeout) {
   int ret;
-#ifdef _MSC_VER
-  SetCommMask(m_iFd, EV_RXCHAR); // 监视接收字符事件  
-  DWORD dwaitResult = WaitForSingleObject(m_iFd, timeout);
-  if (dwaitResult == WAIT_OBJECT_0) ret = 1;
-  else if (dwaitResult == WAIT_TIMEOUT) ret = 0;
-  else ret = -1;
-#else
   fd_set rfds;
   struct timeval tv_timeout;
 
@@ -230,7 +162,6 @@ int SerialSource::WaitRead(int32_t timeout) {
   } else {
     ret = select(m_iFd + 1, &rfds, NULL, NULL, NULL);
   }
-#endif
 
   if (ret < 0) {
     return ret;
@@ -257,71 +188,27 @@ int SerialSource::Receive(UdpPacket& udpPacket, uint16_t u16Len, int flags, int 
 }
 
 int SerialSource::Send(uint8_t *u8Buf, uint16_t u16Len, int flags) {
-#ifdef _MSC_VER
-  if (m_iFd == INVALID_HANDLE_VALUE) 
-    return -EINVAL;
-  DWORD bytesRead;  
-  if (WriteFile(m_iFd, u8Buf, u16Len, &bytesRead, nullptr)) {
-    return bytesRead;
-  } else {
-    return -1;
-  }
-#else
   if (m_iFd < 0)
     return -EINVAL;
 
   return write(m_iFd, u8Buf, u16Len);
-#endif 
 }
 
 int SerialSource::Flush() {
-#ifdef _MSC_VER
-  if (m_iFd != INVALID_HANDLE_VALUE) {
-    DWORD flag = PURGE_RXCLEAR | PURGE_TXCLEAR;
-    if (PurgeComm(m_iFd, flag)) {
-      return 0;
-    } else {
-      return -1;
-    }
-  }
-#else
   if (m_iFd >= 0)
     return tcflush(m_iFd, TCIOFLUSH);
-#endif 
   return 0;
 }
 
 int SerialSource::FlushInput() {
-#ifdef _MSC_VER
-  if (m_iFd != INVALID_HANDLE_VALUE) {
-    DWORD flag = PURGE_RXCLEAR;
-    if (PurgeComm(m_iFd, flag)) {
-      return 0;
-    } else {
-      return -1;
-    }
-  }
-#else
   if (m_iFd >= 0)
     return tcflush(m_iFd, TCIFLUSH);
-#endif 
   return 0;
 }
 
 int SerialSource::FlushOutput() {
-#ifdef _MSC_VER
-  if (m_iFd != INVALID_HANDLE_VALUE) {
-    DWORD flag = PURGE_TXCLEAR;
-    if (PurgeComm(m_iFd, flag)) {
-      return 0;
-    } else {
-      return -1;
-    }
-  }
-#else
   if (m_iFd >= 0)
     return tcflush(m_iFd, TCOFLUSH);
-#endif 
   return 0;
 }
 
@@ -353,16 +240,7 @@ void SerialSource::ReceivedThread() {
         dataIndex = 0;
       }
       if (dataLength + kOneRecvLength <= kDataMaxLength) {
-#ifdef _MSC_VER
-        DWORD bytesRead;
-        if (ReadFile(m_iFd, serialData + dataLength, kOneRecvLength, &bytesRead, nullptr)) {
-          ret = bytesRead;
-        } else {
-          ret = 0;
-        }
-#else
         ret = read(m_iFd, serialData + dataLength, kOneRecvLength);
-#endif
         if (ret > 0) {
           dataLength += ret;
         }

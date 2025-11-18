@@ -2,15 +2,12 @@
 #include <cassert>
 #include <iterator>
 #include <iostream>
-#if _MSC_VER
-# else
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <stdlib.h>
 #include <errno.h>
-#endif
 using namespace hesai::lidar;
 template <typename T, size_t N, typename T2, size_t M>
 template <typename Item>
@@ -51,9 +48,6 @@ Ring2D_shared<T, N, T2, M>::Ring2D_shared() : _ring(new std::array<T, N>), _begi
 {
     std::cout << "sizeof(T2): " << sizeof(T2) << std::endl;
     std::cout << "sizeof(T2) * N * M: " << sizeof(T2) * N * M << std::endl;
-#if _MSC_VER
-    windows_shared_memory shm (open_or_create, "MySharedMemory", read_write, sizeof(T2) * N * M);
-#else
     // shared_memory_object shm (open_or_create, "MySharedMemory", read_write);
     // shm.truncate(sizeof(T2) * N * M);
 
@@ -82,7 +76,6 @@ Ring2D_shared<T, N, T2, M>::Ring2D_shared() : _ring(new std::array<T, N>), _begi
         exit(1); 
     }
     _ring2 = new(ptr)T2[N*M];
-#endif
 
 
 };
@@ -90,9 +83,6 @@ Ring2D_shared<T, N, T2, M>::Ring2D_shared() : _ring(new std::array<T, N>), _begi
 template <typename T, size_t N, typename T2, size_t M>
 Ring2D_shared<T, N, T2, M>::~Ring2D_shared()
 {
-#if _MSC_VER
-    shared_memory_object::remove("MySharedMemory"); 
-#else
     int ret = shmctl(_shmid, IPC_RMID, 0);  
       
     if (ret == 0)  
@@ -103,7 +93,6 @@ Ring2D_shared<T, N, T2, M>::~Ring2D_shared()
     {  
         printf("Shared memory remove failed \n");  
     } 
-#endif
 }
 
 template <typename T, size_t N, typename T2, size_t M>

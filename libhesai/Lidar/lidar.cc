@@ -548,11 +548,7 @@ void Lidar<T_Point>::ReceiveUdpThread() {
   if(!udp_thread_running_) return;
   // uint32_t u32StartTime = GetMicroTickCount();
   LogInfo("Lidar::Receive Udp Thread start to run");
-#ifdef _MSC_VER
-  SetThreadPriorityWin(THREAD_PRIORITY_TIME_CRITICAL);
-#else
   SetThreadPriority(SCHED_FIFO, SHED_FIFO_PRIORITY_MEDIUM);
-#endif
   while (running_) {
     if (!source_) {
       std::this_thread::sleep_for(std::chrono::microseconds(1000));
@@ -605,11 +601,7 @@ template <typename T_Point>
 void Lidar<T_Point>::ReceiveUdpThreadFaultMessage() {
   if(!udp_thread_running_) return;
   LogInfo("Lidar::Receive Udp Fault Message Thread start to run");
-#ifdef _MSC_VER
-  SetThreadPriorityWin(THREAD_PRIORITY_TIME_CRITICAL);
-#else
   SetThreadPriority(SCHED_FIFO, SHED_FIFO_PRIORITY_MEDIUM);
-#endif
   while (running_) {
     if (!source_fault_message_ || source_fault_message_waiting_) {
       std::this_thread::sleep_for(std::chrono::microseconds(1000));
@@ -643,11 +635,7 @@ void Lidar<T_Point>::ParserThread() {
   if(!parser_thread_running_) return;
   int nUDPCount = 0;
   LogInfo("Lidar::ParserThread start to run");
-#ifdef _MSC_VER
-  SetThreadPriorityWin(THREAD_PRIORITY_TIME_CRITICAL);
-#else
   SetThreadPriority(SCHED_FIFO, SHED_FIFO_PRIORITY_MEDIUM);
-#endif
   while (running_) {
     int decoded_packet_index;
     bool decoded_result = decoded_packets_buffer_.try_pop_front(decoded_packet_index);
@@ -676,11 +664,7 @@ void Lidar<T_Point>::ParserThread() {
 template <typename T_Point>
 void Lidar<T_Point>::HandleThread(int nThreadNum) {
   // struct timespec timeout;
-#ifdef _MSC_VER
-  SetThreadPriorityWin(THREAD_PRIORITY_TIME_CRITICAL);
-#else
   SetThreadPriority(SCHED_FIFO, SHED_FIFO_PRIORITY_MEDIUM);
-#endif
   if(!parser_thread_running_) return;
   std::unique_lock<std::mutex> lock(mutex_list_[nThreadNum]);
   while (running_) {

@@ -40,12 +40,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <lidar_types.h>
 
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <ws2tcpip.h> 
-#pragma comment(lib, "ws2_32.lib")  // Winsock Library
-typedef int socklen_t;
-#else
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/ip.h>
@@ -55,7 +49,6 @@ typedef int socklen_t;
 typedef unsigned int SOCKET;
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
-#endif
 namespace hesai
 {
 namespace lidar

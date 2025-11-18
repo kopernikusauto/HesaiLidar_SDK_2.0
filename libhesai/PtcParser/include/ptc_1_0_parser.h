@@ -29,8 +29,6 @@
 
 #ifndef PTC_1_0_PARSER_H_
 #define PTC_1_0_PARSER_H_
-#ifdef _MSC_VER
-#endif
 #include <iostream>
 #include <fstream>
 #include "general_ptc_parser.h"
@@ -75,17 +73,10 @@ struct PTCHeader_1_0 {
 struct BlockHeader {
   BlockHeader(uint32_t u32CrcValid, uint32_t u32CurrentIndex,
               uint32_t u32TotalSize, uint32_t u32Crc) {
-  #ifdef _MSC_VER              
-    m_u32CrcValid = native_to_big(u32CrcValid);
-    m_u32CurrentIndex = native_to_big(u32CurrentIndex);
-    m_u32TotalSize = native_to_big(u32TotalSize);
-    m_u32Crc = native_to_big(u32Crc);
-  #else  
     m_u32CrcValid = htobe32(u32CrcValid);
     m_u32CurrentIndex = htobe32(u32CurrentIndex);
     m_u32TotalSize = htobe32(u32TotalSize);
-    m_u32Crc = htobe32(u32Crc);
-  #endif
+    m_u32Crc = htobe32(u32Crc);  
   }
 
  private:

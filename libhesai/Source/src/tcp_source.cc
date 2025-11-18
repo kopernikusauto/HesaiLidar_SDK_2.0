@@ -32,15 +32,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "tcp_source.h"
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <ws2tcpip.h> 
-#pragma comment(lib, "ws2_32.lib")  // Winsock Library
-#include <BaseTsd.h>
-
-typedef int socklen_t;
-#define MSG_DONTWAIT (0x40)
-#else
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -49,7 +40,6 @@ typedef int socklen_t;
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h> 
-#endif
 #include <plat_utils.h>
 #include <string.h>
 #include <algorithm>
@@ -81,35 +71,18 @@ void TcpSource::Close() {
   m_bLidarConnected = false;
 
   if ((int)m_tcpSock != -1) {
-#ifdef _MSC_VER
-          closesocket(m_tcpSock);
-          WSACleanup();
-#else
           close(m_tcpSock);
-#endif
     m_tcpSock = (SOCKET)(-1);
   }
 }
 
 bool TcpSource::Open() {
   LogInfo("TcpSource open IP %s port %u", m_sServerIP.c_str(), ptc_port_);
-#ifdef _MSC_VER
-  WSADATA wsaData;
-  WORD version = MAKEWORD(2, 2);
-  int res = WSAStartup(version, &wsaData);  // win sock start up
-  if (res) {
-      std::cerr << "Initilize winsock error !" << std::endl;
-      return false;
-  }
-#endif  
   struct sockaddr_in serverAddr;
 
   m_tcpSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
   if ((int)m_tcpSock == -1) { 
-#ifdef _MSC_VER
-    WSACleanup();
-#endif
     return false;
   }
 
@@ -125,21 +98,12 @@ bool TcpSource::Open() {
   }
 
   // 设置非阻塞模式  
-#ifdef _MSC_VER  
-  u_long mode = 1; // 1为非阻塞模式  
-  ioctlsocket(m_tcpSock, FIONBIO, &mode);
-#else  
   int flags = fcntl(m_tcpSock, F_GETFL, 0); 
   fcntl(m_tcpSock, F_SETFL, flags | O_NONBLOCK);  
-#endif 
 
   int result = connect(m_tcpSock, (sockaddr*)&serverAddr, sizeof(serverAddr));  
   if (result < 0) {  
-#ifdef _MSC_VER  
-    if (WSAGetLastError() != WSAEWOULDBLOCK) 
-#else  
     if (errno != EINPROGRESS)  
-#endif  
     {
       LogError("socket Connection error.");  
       Close();
@@ -168,13 +132,8 @@ bool TcpSource::Open() {
   }
   LogInfo("TryOpen succeed, IP %s port %u", m_sServerIP.c_str(), ptc_port_);
   
-#ifdef _MSC_VER  
-  mode = 0; // 0为阻塞模式  
-  ioctlsocket(m_tcpSock, FIONBIO, &mode);  
-#else  
   flags = fcntl(m_tcpSock, F_GETFL, 0); 
   fcntl(m_tcpSock, F_SETFL, flags & ~O_NONBLOCK); 
-#endif  
 
   m_bLidarConnected = true;
   SetTimeout(kDefaultTimeout, kDefaultTimeout);
@@ -296,11 +255,6 @@ bool TcpSource::SetReceiveTimeout(uint32_t u32Timeout) {
     LogWarning("TcpSource not open");
     return false;
   }
-#ifdef _MSC_VER
-  int timeout_ms = u32Timeout;
-  int retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_ms,
-      sizeof(timeout_ms));
-#else
   uint32_t sec = u32Timeout / 1000;
   uint32_t msec = u32Timeout % 1000;
   struct timeval timeout;
@@ -308,7 +262,6 @@ bool TcpSource::SetReceiveTimeout(uint32_t u32Timeout) {
   timeout.tv_usec = msec * 1000;
   int retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_RCVTIMEO,
                           (const void *)&timeout, sizeof(timeval));
-#endif
   return retVal == 0;
 }
 
@@ -320,11 +273,6 @@ int TcpSource::SetTimeout(uint32_t u32RecMillisecond,
   }
   m_u32RecTimeout = u32RecMillisecond;
   m_u32SendTimeout = u32SendMillisecond;
-#ifdef _MSC_VER
-  int timeout_ms = u32RecMillisecond;
-  int retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_RCVTIMEO,
-                        (char*)&timeout_ms, sizeof(timeout_ms));
-#else
   uint32_t sec = u32RecMillisecond / 1000;
   uint32_t msec = u32RecMillisecond % 1000;
 
@@ -333,13 +281,7 @@ int TcpSource::SetTimeout(uint32_t u32RecMillisecond,
   timeout.tv_usec = msec * 1000;
   int retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_RCVTIMEO,
                           (const void *)&timeout, sizeof(timeval));
-#endif
   if (retVal == 0) {
-#ifdef _MSC_VER
-    int send_timeout_ms = u32SendMillisecond;
-    retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_SNDTIMEO,
-                        (char*)&send_timeout_ms, sizeof(send_timeout_ms));    
-#else    
     uint32_t send_sec = u32SendMillisecond / 1000;
     uint32_t send_msec = u32SendMillisecond % 1000;
 
@@ -348,7 +290,6 @@ int TcpSource::SetTimeout(uint32_t u32RecMillisecond,
     send_timeout.tv_usec = send_msec * 1000;
     retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_SNDTIMEO,
                         (const void *)&send_timeout, sizeof(timeval));
-#endif
   }
   return retVal;
 }

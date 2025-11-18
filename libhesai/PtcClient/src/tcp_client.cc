@@ -32,15 +32,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "tcp_client.h"
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <ws2tcpip.h> 
-#pragma comment(lib, "ws2_32.lib")  // Winsock Library
-#include <BaseTsd.h>
 
-typedef int socklen_t;
-#define MSG_DONTWAIT (0x40)
-#else
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -49,7 +41,6 @@ typedef int socklen_t;
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h> 
-#endif
 #include <plat_utils.h>
 #include <string.h>
 #include <algorithm>
@@ -74,12 +65,7 @@ void TcpClient::Close() {
   m_bLidarConnected = false;
 
   if ((int)m_tcpSock != -1) {
-#ifdef _MSC_VER
-          closesocket(m_tcpSock);
-          WSACleanup();
-#else
           close(m_tcpSock);
-#endif
     m_tcpSock = (SOCKET)(-1);
   }
 }
@@ -96,25 +82,13 @@ bool TcpClient::TryOpen(uint16_t host_port, std::string IPAddr, uint16_t u16Port
   if (IsOpened()) Close();
   m_sServerIP = IPAddr;
   ptc_port_ = u16Port;
-  
-#ifdef _MSC_VER
-  WSADATA wsaData;
-  WORD version = MAKEWORD(2, 2);
-  int res = WSAStartup(version, &wsaData);  // win sock start up
-  if (res) {
-      LogError("Initilize winsock error !");
-      return false;
-  }
-#endif  
+   
   struct sockaddr_in serverAddr;
   struct sockaddr_in localAddr;
 
   m_tcpSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
   if ((int)m_tcpSock == -1) { 
-#ifdef _MSC_VER
-    WSACleanup();
-#endif
     return false;
   }
 
@@ -138,22 +112,13 @@ bool TcpClient::TryOpen(uint16_t host_port, std::string IPAddr, uint16_t u16Port
     return false;
   }
 
-  // 设置非阻塞模式  
-#ifdef _MSC_VER  
-  u_long mode = 1; // 1为非阻塞模式  
-  ioctlsocket(m_tcpSock, FIONBIO, &mode);
-#else  
+  // 设置非阻塞模式    
   int flags = fcntl(m_tcpSock, F_GETFL, 0); 
   fcntl(m_tcpSock, F_SETFL, flags | O_NONBLOCK);  
-#endif 
 
   int result = connect(m_tcpSock, (sockaddr*)&serverAddr, sizeof(serverAddr));  
-  if (result < 0) {  
-#ifdef _MSC_VER  
-    if (WSAGetLastError() != WSAEWOULDBLOCK) 
-#else  
+  if (result < 0) {    
     if (errno != EINPROGRESS)  
-#endif  
     {
       LogError("socket Connection error.");  
       Close();
@@ -182,13 +147,8 @@ bool TcpClient::TryOpen(uint16_t host_port, std::string IPAddr, uint16_t u16Port
   }
   LogInfo("TryOpen succeed, IP %s port %u", m_sServerIP.c_str(), ptc_port_);
   
-#ifdef _MSC_VER  
-  mode = 0; // 0为阻塞模式  
-  ioctlsocket(m_tcpSock, FIONBIO, &mode);  
-#else  
   flags = fcntl(m_tcpSock, F_GETFL, 0); 
   fcntl(m_tcpSock, F_SETFL, flags & ~O_NONBLOCK); 
-#endif  
 
   m_bLidarConnected = true;
   return true;
@@ -203,11 +163,7 @@ bool TcpClient::Open(std::string IPAddr, uint16_t u16Port, bool bAutoReceive,
   if (IsOpened(true) && m_sServerIP == IPAddr && u16Port == ptc_port_) {
     return true;
   }
-#ifdef _MSC_VER
   LogInfo("Open() IP %s port %u", IPAddr.c_str(), u16Port);
-#else
-  LogInfo("Open() IP %s port %u", IPAddr.c_str(), u16Port);
-#endif
   Close();
 
   m_sServerIP = IPAddr;
@@ -216,23 +172,11 @@ bool TcpClient::Open(std::string IPAddr, uint16_t u16Port, bool bAutoReceive,
 }
 
 bool TcpClient::Open() {
-#ifdef _MSC_VER
-  WSADATA wsaData;
-  WORD version = MAKEWORD(2, 2);
-  int res = WSAStartup(version, &wsaData);  // win sock start up
-  if (res) {
-      std::cerr << "Initilize winsock error !" << std::endl;
-      return false;
-  }
-#endif  
   struct sockaddr_in serverAddr;
 
   m_tcpSock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
   if ((int)m_tcpSock == -1) { 
-#ifdef _MSC_VER
-    WSACleanup();
-#endif
     return false;
   }
 
@@ -300,13 +244,8 @@ int TcpClient::Receive(uint8_t *u8Buf, uint32_t u32Len, int flags) {
   if (ret) {
     if (flags == 0xFF) {
   // 设置非阻塞模式  
-#ifdef _MSC_VER  
-      u_long mode = 1; // 1为非阻塞模式  
-      ioctlsocket(m_tcpSock, FIONBIO, &mode);
-#else  
       int flags = fcntl(m_tcpSock, F_GETFL, 0); 
       fcntl(m_tcpSock, F_SETFL, flags | O_NONBLOCK);  
-#endif 
     }
     len = recv(m_tcpSock, (char*)u8Buf, u32Len, flags);
     if (len == 0 || (len == -1 && errno != EINTR && errno != EAGAIN &&
@@ -317,13 +256,8 @@ int TcpClient::Receive(uint8_t *u8Buf, uint32_t u32Len, int flags) {
       }
     }
     if (flags == 0xFF) {
-#ifdef _MSC_VER  
-      u_long mode = 0; // 0为阻塞模式  
-      ioctlsocket(m_tcpSock, FIONBIO, &mode);  
-#else  
       flags = fcntl(m_tcpSock, F_GETFL, 0); 
       fcntl(m_tcpSock, F_SETFL, flags & ~O_NONBLOCK); 
-#endif 
     }
   }
 
@@ -342,11 +276,6 @@ bool TcpClient::SetReceiveTimeout(uint32_t u32Timeout) {
     LogWarning("TcpClient not open");
     return false;
   }
-#ifdef _MSC_VER
-  int timeout_ms = u32Timeout;
-  int retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout_ms,
-      sizeof(timeout_ms));
-#else
   uint32_t sec = u32Timeout / 1000;
   uint32_t msec = u32Timeout % 1000;
   struct timeval timeout;
@@ -354,7 +283,6 @@ bool TcpClient::SetReceiveTimeout(uint32_t u32Timeout) {
   timeout.tv_usec = msec * 1000;
   int retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_RCVTIMEO,
                           (const void *)&timeout, sizeof(timeval));
-#endif
   return retVal == 0;
 }
 
@@ -366,11 +294,6 @@ int TcpClient::SetTimeout(uint32_t u32RecMillisecond,
   }
   m_u32RecTimeout = u32RecMillisecond;
   m_u32SendTimeout = u32SendMillisecond;
-#ifdef _MSC_VER
-  int timeout_ms = u32RecMillisecond;
-  int retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_RCVTIMEO,
-                        (char*)&timeout_ms, sizeof(timeout_ms));
-#else
   uint32_t sec = u32RecMillisecond / 1000;
   uint32_t msec = u32RecMillisecond % 1000;
 
@@ -379,13 +302,7 @@ int TcpClient::SetTimeout(uint32_t u32RecMillisecond,
   timeout.tv_usec = msec * 1000;
   int retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_RCVTIMEO,
                           (const void *)&timeout, sizeof(timeval));
-#endif
   if (retVal == 0) {
-#ifdef _MSC_VER
-    int send_timeout_ms = u32SendMillisecond;
-    retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_SNDTIMEO,
-                        (char*)&send_timeout_ms, sizeof(send_timeout_ms));    
-#else    
     uint32_t send_sec = u32SendMillisecond / 1000;
     uint32_t send_msec = u32SendMillisecond % 1000;
 
@@ -394,7 +311,6 @@ int TcpClient::SetTimeout(uint32_t u32RecMillisecond,
     send_timeout.tv_usec = send_msec * 1000;
     retVal = setsockopt(m_tcpSock, SOL_SOCKET, SO_SNDTIMEO,
                         (const void *)&send_timeout, sizeof(timeval));
-#endif
   }
   return retVal;
 }

@@ -37,12 +37,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <endian.h>
 #include <arpa/inet.h>
-#ifdef _MSC_VER
-#define PACKED
-#pragma pack(push, 1)
-#else
 #define PACKED __attribute__((packed))
-#endif
 
 struct LidarCommunicationHeader {
   // [5:4] 00:NOP, 2'b01:read, 2'b10:write
@@ -109,7 +104,4 @@ struct LidarCommunicationHeader {
   }
 
 } PACKED;
-#ifdef _MSC_VER
-#pragma pack(pop)
-#endif
 #endif

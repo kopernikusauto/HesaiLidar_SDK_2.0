@@ -12,12 +12,7 @@ namespace hesai
 {
   namespace lidar
   {
-    #ifdef _MSC_VER
-    #define PACKED
-    #pragma pack(push, 1)
-    #else
     #define PACKED __attribute__((packed))
-    #endif
 
     // BODY
     // BODY_unit
@@ -115,11 +110,6 @@ namespace hesai
           t.tm_min = m_u8UTC[4];
           t.tm_sec = m_u8UTC[5];
           t.tm_isdst = 0;
-#ifdef _MSC_VER
-  TIME_ZONE_INFORMATION tzi;
-  GetTimeZoneInformation(&tzi);
-  long int timezone =  tzi.Bias * 60;
-#endif
           return (mktime(&t) - timezone) * 1000000 + GetTimestamp();
         }
         else {

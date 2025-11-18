@@ -36,12 +36,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef TCPSOURCE_H
 #define TCPSOURCE_H
 
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <ws2tcpip.h> 
-#else
+
 typedef unsigned int SOCKET;
-#endif
 #include "source.h"
 #include <stdint.h>
 #include <string.h>

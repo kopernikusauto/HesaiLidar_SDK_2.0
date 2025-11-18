@@ -28,20 +28,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "plat_utils.h"
 #ifndef LIDAR_PROTOCOL_HEADER_H
 #define LIDAR_PROTOCOL_HEADER_H
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <windows.h>
-#endif
 namespace hesai
 {
 namespace lidar
 {
-#ifdef _MSC_VER
-#define PACKED
-#pragma pack(push, 1)
-#else
 #define PACKED __attribute__((packed))
-#endif
 
 inline int doubleToInt(double data) {
   return static_cast<int>(data + 0.0625);
@@ -136,9 +127,6 @@ inline bool hasEnvLight(uint8_t status) { return status & 0x40; }
 inline bool hasSlope(uint8_t status) { return status & 0x20; }
 inline bool hasSelfDefine(uint8_t status) { return status & 0x40; }
 
-#ifdef _MSC_VER
-#pragma pack(pop)
-#endif
 }  // namespace lidar
 }  // namespace hesai
 #endif

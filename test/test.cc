@@ -21,11 +21,9 @@ bool IsPlayEnded(HesaiLidarSdk<LidarPointXYZIRT>& sdk)
 
 int main(int argc, char *argv[])
 {
-#ifndef _MSC_VER
   if (system("sudo sh -c \"echo 562144000 > /proc/sys/net/core/rmem_max\"") == -1) {
     printf("Command execution failed!\n");
   }
-#endif
   HesaiLidarSdk<LidarPointXYZIRT> sample;
   DriverParam param;
 

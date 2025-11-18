@@ -270,11 +270,6 @@ struct HS_LIDAR_TAIL_ST_V3 {
 			t.tm_min = m_u8UTC[4];
 			t.tm_sec = m_u8UTC[5];
 			t.tm_isdst = 0;
-#ifdef _MSC_VER
-      TIME_ZONE_INFORMATION tzi;
-      GetTimeZoneInformation(&tzi);
-      long int timezone =  tzi.Bias * 60;
-#endif
       last_utc_time.last_time = (mktime(&t) - timezone - 86400) * 1000000;
       return last_utc_time.last_time + GetTimestamp() ;
 		}
@@ -410,11 +405,6 @@ struct FaultMessageVersion4_3 {
 			t.tm_min = utc_time[4];
 			t.tm_sec = utc_time[5];
 			t.tm_isdst = 0;
-#ifdef _MSC_VER
-      TIME_ZONE_INFORMATION tzi;
-      GetTimeZoneInformation(&tzi);
-      long int timezone =  tzi.Bias * 60;
-#endif
       last_utc_time.last_time = (mktime(&t) - timezone - 86400) * 1000000;
       return last_utc_time.last_time + GetTimestamp() ;
 		}

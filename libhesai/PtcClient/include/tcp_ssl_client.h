@@ -37,12 +37,7 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <ws2tcpip.h> 
-#else
 typedef unsigned int SOCKET;
-#endif
 
 const int MAX_LENGTH = 1024;
 

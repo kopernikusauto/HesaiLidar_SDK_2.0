@@ -63,7 +63,7 @@ public:
   int multi_send_rate_count_ = 0;
   HesaiLidarSdk() {
 #ifdef USE_CUDA
-    std::cout << "-------- Hesai Lidar SDK Gpu V" << 2 << "." << 0 << "." << 13 << " --------" << std::endl;
+    std::cout << "-------- Hesai Lidar SDK Gpu V" <<  << "." << 0 << "." << 13 << " --------" << std::endl;
     gpu_parser_ptr_ = nullptr;
 #else
     std::cout << "-------- Hesai Lidar SDK V" << 2 << "." << 0 << "." << 13 << " --------" << std::endl;

@@ -36,12 +36,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef TCPCLIENT_H
 #define TCPCLIENT_H
 
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <ws2tcpip.h> 
-#else
 typedef unsigned int SOCKET;
-#endif
 #include "client_base.h"
 #include <stdint.h>
 #include <string.h>

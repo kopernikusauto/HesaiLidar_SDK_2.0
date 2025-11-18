@@ -40,13 +40,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include "source.h"
 
-#ifdef _MSC_VER
-#include <winsock2.h>
-#include <ws2tcpip.h> 
-#pragma comment(lib, "ws2_32.lib")  // Winsock Library
-#include <BaseTsd.h>
-
-#else
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/ip.h>
@@ -56,7 +49,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/file.h>
-#endif
 
 namespace hesai
 {
