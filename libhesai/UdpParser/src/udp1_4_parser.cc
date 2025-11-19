@@ -290,7 +290,7 @@ void Udp1_4Parser<T_Point>::LoadFiretimesFile(const std::string& firetimes_path)
         }
       }
     } else {
-      throw std::invalid_argument("Open firetime file failed");
+      return;
     }
     this->loadFiretimeSuccess();
     LogInfo("Open firetime file success!");
