@@ -210,7 +210,8 @@ void GeneralParser<T_Point>::LoadFiretimesFile(const std::string& firetimes_path
       inFile.close();
       return;
     } else {
-      throw std::invalid_argument("Open firetime file failed");
+      LogFatal("load firetime error");
+      return;
     }
   } catch (const std::exception &e) {
     LogFatal("load firetime error: %s", e.what());

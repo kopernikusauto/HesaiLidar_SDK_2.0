@@ -101,19 +101,12 @@ Lidar<T_Point>::~Lidar() {
     delete[] condition_vars_;
     condition_vars_ = nullptr;
   }
-  Logger::GetInstance().Stop();
 }
 
 template <typename T_Point>
 int Lidar<T_Point>::Init(const DriverParam& param) {
     init_running = true;
     int res = -1;
-    /*******************************Init log*********************************************/
-    Logger::GetInstance().SetFileName(param.log_path.c_str());
-    Logger::GetInstance().setLogTargetRule(param.log_Target);
-    Logger::GetInstance().setLogLevelRule(param.log_level);
-    // Logger::GetInstance().bindLogCallback(logCallback);
-    Logger::GetInstance().Start(); 
     /**********************************************************************************/
     /***************************Init source****************************************/
     udp_port_ = param.input_param.udp_port;
