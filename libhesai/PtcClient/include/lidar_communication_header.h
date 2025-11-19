@@ -35,7 +35,13 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef LIDARCOMMUNICATIONHEADER_H
 #define LIDARCOMMUNICATIONHEADER_H
 
+#if defined(__APPLE__) && defined(__MACH__)
+#include <libkern/OSByteOrder.h>
+#define htobe32(x) OSSwapHostToBigInt32(x)
+#define htobe16(x) OSSwapHostToBigInt16(x)
+#else
 #include <endian.h>
+#endif
 #include <arpa/inet.h>
 #define PACKED __attribute__((packed))
 

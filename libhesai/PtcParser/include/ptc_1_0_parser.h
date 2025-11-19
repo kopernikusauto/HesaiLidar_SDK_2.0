@@ -31,6 +31,10 @@
 #define PTC_1_0_PARSER_H_
 #include <iostream>
 #include <fstream>
+#if defined(__APPLE__) && defined(__MACH__)
+#include <libkern/OSByteOrder.h>
+#define htobe32(x) OSSwapHostToBigInt32(x)
+#endif
 #include "general_ptc_parser.h"
 
 #pragma pack(push, 1)
