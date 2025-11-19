@@ -27,14 +27,39 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ************************************************************************************************/
 #include <plat_utils.h>
 static const int kTimeStrLen = 1000;
-#include <sys/syscall.h>
 #include <time.h>
 #include <sys/time.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#include <pthread.h>
+static inline uint64_t gettid() {
+    uint64_t tid;
+    pthread_threadid_np(NULL, &tid);
+    return tid;
+}
+#else
+#include <sys/syscall.h>
 #define gettid() syscall(SYS_gettid)
+#endif
 
 void SetThreadPriority(int policy, int priority) {
-  printf("set thread %lu, tid %ld, policy %d and priority %d\n", pthread_self(),
+#if defined(__APPLE__)
+  qos_class_t qos;
+  if (priority <= SHED_FIFO_PRIORITY_LOW)            qos = QOS_CLASS_BACKGROUND;
+  else if (priority <= SHED_FIFO_PRIORITY_MEDIUM)    qos = QOS_CLASS_UTILITY;
+  else if (priority <= SHED_FIFO_PRIORITY_HIGH)      qos = QOS_CLASS_USER_INITIATED;
+  else                                               qos = QOS_CLASS_USER_INTERACTIVE;
+
+  printf("macOS: setting QoS class for thread %p (tid %llu) to %d\n",
+           pthread_self(), gettid(), qos);
+
+  pthread_set_qos_class_self_np(qos, 0);
+  qos_class_t out_qos;
+  int relpri;
+  pthread_get_qos_class_np(pthread_self(), &out_qos, &relpri);
+  printf("macOS: thread now QoS=%d relpri=%d\n", out_qos, relpri);
+#else
+  printf("Linux: set thread %lu, tid %ld, policy %d and priority %d\n", pthread_self(),
          gettid(), policy, priority);
   sched_param param;
   param.sched_priority = priority;
@@ -42,8 +67,9 @@ void SetThreadPriority(int policy, int priority) {
 
   int ret_policy;
   pthread_getschedparam(pthread_self(), &ret_policy, &param);
-  printf("get thead %lu, tid %ld, policy %d and priority %d\n", pthread_self(),
+  printf("Linux: get thead %lu, tid %ld, policy %d and priority %d\n", pthread_self(),
          gettid(), ret_policy, param.sched_priority);
+#endif
 }
 
 unsigned int GetTickCount() {

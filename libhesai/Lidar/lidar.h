@@ -50,7 +50,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Version.h"
 #if defined(__linux__)
 #include <endian.h>       // Linux
-#elif defined(__APPLE__) && defined(__MACH__)
+#elif defined(__APPLE__)
 #include <sys/endian.h>   // macOS / BSD
 #endif
 #include <semaphore.h>

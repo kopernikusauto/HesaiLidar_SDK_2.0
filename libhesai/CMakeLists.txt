@@ -102,13 +102,18 @@ file(GLOB_RECURSE _ptc_client_headers
 )
 
 add_library(HesaiSource
-    Source/src/serial_source.cc
     Source/src/source.cc
     Source/src/socket_source.cc
     Source/src/tcp_source.cc
     Source/src/pcap_source.cc
     Source/src/pcap_saver.cc
 )
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(HesaiSource PRIVATE
+        Source/src/serial_source.cc
+    )
+endif()
+
 target_link_libraries(HesaiSource
     PUBLIC
     HesaiLidar

@@ -141,6 +141,11 @@ int Lidar<T_Point>::Init(const DriverParam& param) {
 
     }
     else if(param.input_param.source_type == DATA_FROM_SERIAL) {
+      #if defined(__APPLE__)
+        LogFatal("Serial source is not supported on macOS.");
+        init_finish_[FailInit] = true;
+        return -1;
+      #endif
       source_ = std::make_shared<SerialSource>(param.input_param.rs485_com, param.input_param.rs485_baudrate, param.input_param.point_cloud_baudrate);
       source_rs232_ = std::make_shared<SerialSource>(param.input_param.rs232_com, param.input_param.rs232_baudrate);
       source_->SetReceiveStype(SERIAL_POINT_CLOUD_RECV);
