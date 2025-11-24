@@ -373,8 +373,6 @@ void GeneralParser<T_Point>::GetDistanceCorrection(LidarOpticalCenter optical_ce
 template <typename T_Point>
 void GeneralParser<T_Point>::TransformPoint(float& x, float& y, float& z, const TransformParam& transform)
 {
-  if (transform.use_flag == false) return;
-
   float cosa = std::cos(transform.roll);
   float sina = std::sin(transform.roll);
   float cosb = std::cos(transform.pitch);

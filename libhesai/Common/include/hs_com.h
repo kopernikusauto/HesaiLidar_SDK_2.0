@@ -54,7 +54,6 @@ DEFINE_SET_GET(z, float)
 
 typedef struct TransformParam  
 {
-  bool use_flag = false;
   ///< unit, m
   float x = 0.0f; 
   ///< unit, m     
