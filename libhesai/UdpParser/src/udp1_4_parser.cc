@@ -427,8 +427,7 @@ int Udp1_4Parser<T_Point>::ComputeXYZI(LidarDecodedFrame<T_Point> &frame, uint32
       }
       if (this->get_correction_file_) {
         int azimuth_coll = doubleToInt(this->correction.azimuth[channel_index] * kAllFineResolutionFloat);
-        int elevation_corr = doubleToInt((this->correction.elevation[channel_index] + 0.7) * // added 0.7 to elevation due to error during factory calibration.
-                                kAllFineResolutionFloat);
+        int elevation_corr = doubleToInt(this->correction.elevation[channel_index] * kAllFineResolutionFloat);
         if (frame.fParam.distance_correction_flag) {
           GeneralParser<T_Point>::GetDistanceCorrection(this->optical_center, azimuth_coll, elevation_corr, distance, this->lidar_type_ != STR_OTHER ? GeometricCenter : OpticalCenter);
         }
